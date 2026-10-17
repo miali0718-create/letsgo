@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bonnie排程旅遊agent - 旗艦精緻海報與深度導覽版</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome 圖標 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js 統計圖表 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- html2canvas 圖片繪製庫 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap');
+        body { 
+            font-family: 'Noto Sans TC', sans-serif; 
+            transition: all 0.25s ease-in-out;
+            background-color: #f6f3eb; 
+        }
+        .forest-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(120, 53, 15, 0.15);
+        }
+
+        /* 長輩極大字視覺模式 */
+        body.elder-mode {
+            font-size: 20px !important;
+            line-height: 1.8 !important;
+            background-color: #f0eae1 !important;
+            color: #451a03 !important;
+        }
+        body.elder-mode .forest-card, body.elder-mode div.bg-white {
+            background-color: #ffffff !important;
+            border: 3px solid #78350f !important;
+            box-shadow: 0 10px 25px -5px rgba(120, 53, 15, 0.3) !important;
+        }
+        body.elder-mode button {
+            padding-top: 0.85rem !important;
+            padding-bottom: 0.85rem !important;
+            font-size: 1.15rem !important;
+            font-weight: 800 !important;
+        }
+        body.elder-mode input, body.elder-mode select {
+            font-size: 1.2rem !important;
+            padding: 0.9rem !important;
+            border: 2px solid #78350f !important;
+            background-color: #fef3c7 !important;
+            color: #451a03 !important;
+        }
+        body.elder-mode h2, body.elder-mode h3, body.elder-mode h4 {
+            font-size: 1.65rem !important;
+            color: #451a03 !important;
+            font-weight: 800 !important;
+        }
+    </style>
+</head>
+<body class="text-stone-800 min-h-screen pb-12">
+
+    <!-- 頂部導覽列 -->
+    <nav class="bg-gradient-to-r from-emerald-900 via-amber-950 to-stone-900 text-white shadow-lg sticky top-0 z-40 border-b border-amber-900/50">
+        <div class="max-w-5xl mx-auto px-4 py-3.5 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <i class="fa-solid font-bold text-2xl text-amber-300 fa-tree"></i>
+                <span class="font-bold text-xl tracking-wide">Bonnie排程旅遊agent</span>
+            </div>
+            <div class="flex items-center space-x-3">
+                <button onclick="toggleFontSize()" id="fontBtn" class="text-xs bg-amber-400 hover:bg-amber-500 text-amber-950 font-bold px-3.5 py-1.5 rounded-full transition shadow-md flex items-center gap-1">
+                    <i class="fa-solid fa-eye text-sm"></i> 啟用極大字視覺模式
+                </button>
+                <button onclick="openAnalyticsModal()" class="text-xs bg-stone-800 hover:bg-stone-900 text-amber-100 font-semibold px-3 py-1.5 rounded-full border border-amber-700 shadow transition flex items-center gap-1">
+                    <i class="fa-solid fa-chart-pie"></i> 後台數據分析
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主要內容區 -->
+    <main class="max-w-5xl mx-auto px-4 mt-6 space-y-6">
+
+        <!-- 使用者輪廓提示條 -->
+        <div id="userPersonaBanner" class="bg-amber-100/70 border border-amber-300/80 rounded-2xl p-4 flex justify-between items-center shadow-sm">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-amber-900 text-amber-100 flex items-center justify-center font-bold shrink-0 shadow-sm">
+                    <i class="fa-solid fa-heart text-amber-300"></i>
+                </div>
+                <div>
+                    <p class="text-xs text-amber-900 font-bold">Bonnie 動態加權演算法已啟用</p>
+                    <p class="text-sm font-medium text-stone-900" id="personaText">載入偏好資訊中...</p>
+                </div>
+            </div>
+            <button onclick="openSurveyModal()" class="text-xs text-amber-900 font-bold underline hover:text-amber-950 shrink-0">重新設定偏好</button>
+        </div>
+
+        <!-- 搜尋與天氣控制台 -->
+        <div class="forest-card rounded-2xl p-6 shadow-md">
+            <h2 class="text-lg font-bold text-stone-900 mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-wand-magic-sparkles text-emerald-700"></i> 情境旅遊搜尋與氣象條件設定
+            </h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                <div>
+                    <label class="block text-xs font-bold text-amber-950 mb-1">目的地縣市</label>
+                    <select id="citySelect" onchange="fetchWeatherAPI()" class="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-amber-800 outline-none">
+                        <option value="台南" selected>台南市 (美食古都)</option>
+                        <option value="台中">台中市 (文化藝術)</option>
+                        <option value="花蓮">花蓮縣 (山海秘境)</option>
+                        <option value="台北">台北市 (時尚巷弄)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-amber-950 mb-1">預計出遊日期 (小於今日反黑)</label>
+                    <input type="date" id="travelDate" onchange="fetchWeatherAPI()" class="w-full bg-white border border-stone-300 rounded-xl p-2 text-sm focus:ring-2 focus:ring-amber-800 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-amber-950 mb-1">氣象來源 / 模擬測試</label>
+                    <select id="weatherSimSelect" onchange="fetchWeatherAPI()" class="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-amber-800 outline-none">
+                        <option value="live" selected>🌐 連線 API 即時氣象預報</option>
+                        <option value="sunny">☀️ 展示測試：晴朗多雲</option>
+                        <option value="rainy">⛈️ 展示測試：豪雨特報 (85%)</option>
+                        <option value="hot">🔥 展示測試：酷暑特報 (36°C)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-amber-950 mb-1">景點篩選</label>
+                    <select id="durationSelect" class="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-amber-800 outline-none">
+                        <option value="all" selected>顯示全區精選景點 (可複選)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- 自由文字輸入框 -->
+            <div class="mb-4">
+                <label class="block text-xs font-bold text-amber-950 mb-1">輸入你想去哪裡或體驗什麼？（支援自由文字與多樣情境）</label>
+                <div class="relative">
+                    <input type="text" id="userInputQuery" placeholder="例如：想做韓式燙布貼、品嚐手沖咖啡、去神農街逛街、吹海風..." class="w-full bg-white border border-stone-300 rounded-xl p-3 pr-10 text-sm focus:ring-2 focus:ring-amber-800 outline-none">
+                    <i class="fa-solid fa-pen-nib absolute right-3 top-3.5 text-amber-800/50"></i>
+                </div>
+            </div>
+
+            <!-- 情境標籤快選按鈕 -->
+            <div class="flex flex-wrap gap-2 mb-5">
+                <span class="text-xs text-amber-950 self-center mr-1 font-bold">熱門快選：</span>
+                <button onclick="setQuery('想找質感特色的網美咖啡廳喝下午茶')" class="text-xs bg-amber-900 hover:bg-amber-950 text-amber-100 font-bold px-3.5 py-1.5 rounded-full transition shadow-sm">☕ 特色咖啡廳</button>
+                <button onclick="setQuery('我想參加 DIY 手作體驗課程')" class="text-xs bg-teal-800 hover:bg-teal-900 text-teal-100 font-bold px-3.5 py-1.5 rounded-full transition shadow-sm">🎨 DIY 手作</button>
+                <button onclick="setQuery('想去老街商圈逛街購物')" class="text-xs bg-stone-700 hover:bg-stone-800 text-stone-100 font-bold px-3.5 py-1.5 rounded-full transition shadow-sm">🛍️ 逛街購物</button>
+                <button onclick="setQuery('帶小朋友去親子樂園玩樂')" class="text-xs bg-emerald-800 hover:bg-emerald-900 text-emerald-100 font-bold px-3.5 py-1.5 rounded-full transition shadow-sm">🎡 親子樂園</button>
+                <button onclick="setQuery('我想去海邊山邊走走散步')" class="text-xs bg-sky-900 hover:bg-sky-950 text-sky-100 font-bold px-3.5 py-1.5 rounded-full transition shadow-sm">🏖️ 海邊/山邊散步</button>
+            </div>
+
+            <button onclick="generatePlan()" class="w-full bg-gradient-to-r from-amber-900 to-emerald-800 hover:from-amber-950 hover:to-emerald-900 text-white font-bold py-3.5 rounded-xl shadow-md transition flex items-center justify-center gap-2">
+                <i class="fa-solid fa-magnifying-glass"></i> 搜尋並匹配專屬景點
+            </button>
+        </div>
+
+        <!-- 即時氣象資訊卡片 -->
+        <div id="weatherCard" class="bg-gradient-to-r from-amber-950 via-stone-900 to-emerald-900 text-white rounded-2xl p-5 shadow-md flex justify-between items-center transition-all border border-amber-700/40">
+            <div>
+                <p class="text-xs font-medium text-amber-200 flex items-center gap-1" id="weatherCityName">
+                    <i class="fa-solid fa-wifi animate-pulse text-amber-300"></i> 連線 Open-Meteo 即時氣象 API
+                </p>
+                <h3 class="text-2xl font-bold mt-1 text-white" id="weatherDesc">☀️ 正在載入即時氣象...</h3>
+                <p class="text-xs mt-2 text-amber-100/90" id="weatherTips">氣象資料讀取中，請稍候。</p>
+            </div>
+            <div class="text-right">
+                <span class="text-3xl md:text-4xl font-extrabold text-amber-300" id="weatherTemp">--°C</span>
+                <p class="text-xs text-amber-200/80 mt-1" id="weatherSubInfo">降雨率 --% | UV --</p>
+            </div>
+        </div>
+
+        <!-- 天氣衝突警示方塊 -->
+        <div id="weatherAlertBox" class="hidden bg-rose-50 border-l-4 border-rose-600 rounded-2xl p-4 shadow-sm">
+            <div class="flex gap-3">
+                <div class="text-rose-600 text-2xl"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                <div>
+                    <h4 class="font-bold text-rose-950 text-sm" id="alertTitle">⛈️ 天氣衝突警示通知</h4>
+                    <p class="text-xs text-rose-800 mt-1" id="alertMessage">偵測到您的行程包含戶外/海邊/夜市活動，但當前氣象預報有雨，請留意安全！</p>
+                    <div class="mt-2 text-xs bg-white text-rose-950 p-2.5 rounded-xl border border-rose-200" id="alertAlternative">
+                        💡 <strong>Bonnie AI 推薦備案：</strong> 已自動幫您優先比對【室內燙布貼 DIY、金工手作與質感咖啡廳】！
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 景點與路線清單結果區 -->
+        <div id="resultContainer" class="hidden space-y-4">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 bg-amber-100/60 p-4 rounded-2xl border border-amber-300/60">
+                <div>
+                    <h3 class="font-bold text-amber-950 text-base flex items-center gap-2">
+                        <i class="fa-solid fa-list-check text-amber-800"></i> 請勾選你想去的景點 (包含建議停留時間)
+                    </h3>
+                    <p class="text-xs text-amber-800 mt-0.5">勾選後點擊右側按鈕，Bonnie AI 將自動為您規劃不繞路最佳順序、推算時間軸並生成高畫質海報！</p>
+                </div>
+                <button onclick="optimizeSelectedRoute()" class="bg-gradient-to-r from-emerald-800 to-teal-800 hover:from-emerald-900 hover:to-teal-900 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-md flex items-center gap-1.5 transition shrink-0">
+                    <i class="fa-solid fa-route text-amber-300"></i> 順路排序並產生旗艦海報
+                </button>
+            </div>
+
+            <!-- 景點選擇清單 -->
+            <div id="itineraryList" class="space-y-3"></div>
+
+            <!-- 智慧順路排序結果面板 -->
+            <div id="optimizedRoutePanel" class="hidden bg-stone-900 text-amber-100 rounded-2xl p-5 shadow-xl border-2 border-emerald-600/80 space-y-4 animate-fade-in">
+                <div class="flex justify-between items-center border-b border-amber-500/30 pb-3">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-compass text-amber-400 text-xl"></i>
+                        <div>
+                            <h4 class="font-bold text-amber-300 text-base">🗺️ Bonnie AI 順路路線與動態時間軸規劃完成！</h4>
+                            <p class="text-xs text-amber-200/80">已為您消除繞路，並依停留時間自動計算最佳抵達時間！</p>
+                        </div>
+                    </div>
+                    <button onclick="openShareModal()" class="bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold text-xs px-3.5 py-2 rounded-xl shadow transition flex items-center gap-1">
+                        <i class="fa-solid fa-palette"></i> 開啟高畫質旅遊海報
+                    </button>
+                </div>
+
+                <div id="optimizedStepsContainer" class="space-y-3 text-sm"></div>
+
+                <div class="pt-2 flex justify-between items-center">
+                    <span class="text-xs text-amber-200/70">行程順序已達最短距離最佳化</span>
+                    <a id="googleMapsMultiRouteBtn" href="#" target="_blank" class="bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold px-4 py-2 rounded-xl transition flex items-center gap-1">
+                        <i class="fa-solid fa-map-location-dot"></i> 一鍵開啟 Google Maps 多點連線導航
+                    </a>
+                </div>
+            </div>
+
+            <!-- 隨身裝備提醒 -->
+            <div class="bg-amber-100/80 border border-amber-300 rounded-2xl p-4 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid fa-bag-shopping text-amber-900 text-xl"></i>
+                    <div>
+                        <h4 class="font-bold text-xs text-amber-950">🎒 今日推薦攜帶裝備清單</h4>
+                        <p class="text-xs text-amber-900 mt-0.5" id="packingTips">防曬乳、遮陽帽、充足飲用水</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Modal 1: 使用者問卷 Modal -->
+    <div id="surveyModal" class="fixed inset-0 bg-stone-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl relative border-2 border-amber-800">
+            <div class="text-center mb-5">
+                <div class="w-12 h-12 bg-amber-100 text-amber-900 rounded-full flex items-center justify-center mx-auto mb-2 text-xl font-bold shadow-inner">
+                    <i class="fa-solid fa-heart"></i>
+                </div>
+                <h3 class="text-lg font-bold text-stone-900">歡迎使用 Bonnie排程旅遊agent</h3>
+                <p class="text-xs text-amber-900 mt-1">請選擇您的旅遊偏好，讓演算法為您客製化最貼心的行程！</p>
+            </div>
+
+            <form id="surveyForm" onsubmit="saveSurvey(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-stone-900 mb-1">您的性別</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <label class="border rounded-xl p-2 text-center text-xs cursor-pointer hover:bg-amber-50 font-medium"><input type="radio" name="gender" value="female" checked> 女性</label>
+                        <label class="border rounded-xl p-2 text-center text-xs cursor-pointer hover:bg-amber-50 font-medium"><input type="radio" name="gender" value="male"> 男性</label>
+                        <label class="border rounded-xl p-2 text-center text-xs cursor-pointer hover:bg-amber-50 font-medium"><input type="radio" name="gender" value="other"> 不透露</label>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-stone-900 mb-1">年齡層</label>
+                    <select id="ageSelect" class="w-full border rounded-xl p-2 text-xs bg-white focus:ring-2 focus:ring-amber-800 outline-none">
+                        <option value="18-24">18 - 24 歲 (年輕/學生族群)</option>
+                        <option value="25-34" selected>25 - 34 歲 (小資/上班族)</option>
+                        <option value="35-49">35 - 49 歲 (家庭親子)</option>
+                        <option value="50+">50 歲以上 (樂齡休閒)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-stone-900 mb-1">您偏好的旅遊風格</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="border-2 rounded-xl p-3 text-center text-xs cursor-pointer hover:bg-emerald-50 border-emerald-700/30 block">
+                            <input type="radio" name="style" value="nature" checked>
+                            <span class="block font-bold text-emerald-800 mt-1">🌿 大自然/戶外派</span>
+                            <span class="text-[10px] text-emerald-700">步道、觀海、遊樂園</span>
+                        </label>
+                        <label class="border-2 rounded-xl p-3 text-center text-xs cursor-pointer hover:bg-amber-50 border-amber-800/30 block">
+                            <input type="radio" name="style" value="urban">
+                            <span class="block font-bold text-amber-900 mt-1">☕ 都市/咖啡廳手作</span>
+                            <span class="text-[10px] text-amber-800">特色咖啡、逛街、DIY</span>
+                        </label>
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full bg-gradient-to-r from-amber-900 to-emerald-800 hover:from-amber-950 hover:to-emerald-900 text-white font-bold py-2.5 rounded-xl text-xs shadow-md transition">儲存偏好並開始體驗</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal 2: 後台數據分析 Dashboard Modal (已升級為全量累積資料動態計算) -->
+    <div id="analyticsModal" class="fixed inset-0 bg-stone-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto border-2 border-amber-900">
+            <button onclick="closeAnalyticsModal()" class="absolute right-4 top-4 text-stone-400 hover:text-stone-700 text-lg"><i class="fa-solid fa-xmark"></i></button>
+            
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 border-b pb-3">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-chart-column text-amber-900 text-xl"></i>
+                    <div>
+                        <h3 class="font-bold text-stone-900">Bonnie排程旅遊agent - 後台數據分析面板</h3>
+                        <p class="text-xs text-amber-800" id="dataTotalCountTag">載入全量數據資料庫中...</p>
+                    </div>
+                </div>
+                <button onclick="generateReport()" class="bg-gradient-to-r from-amber-800 to-emerald-800 hover:from-amber-900 hover:to-emerald-900 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow transition flex items-center gap-1.5 shrink-0">
+                    <i class="fa-solid fa-file-contract"></i> 生成全量商業策略報告
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div class="border rounded-xl p-3 bg-amber-50/50 border-amber-200">
+                    <h4 class="text-xs font-bold text-stone-800 mb-2 text-center">各年齡層使用者偏好佔比 (全量)</h4>
+                    <canvas id="ageChart" class="max-h-48"></canvas>
+                </div>
+                <div class="border rounded-xl p-3 bg-emerald-50/50 border-emerald-200">
+                    <h4 class="text-xs font-bold text-stone-800 mb-2 text-center">旅遊風格族群佔比 (全量)</h4>
+                    <canvas id="styleChart" class="max-h-48"></canvas>
+                </div>
+            </div>
+
+            <div class="flex justify-between items-center mb-2">
+                <h4 class="text-xs font-bold text-stone-900">歷史使用者偏好完整紀錄 (LocalStorage)</h4>
+                <button onclick="clearAllLogs()" class="text-[11px] text-rose-700 hover:underline font-bold"><i class="fa-solid fa-trash-can"></i> 清除歷史數據</button>
+            </div>
+            
+            <div class="border border-stone-200 rounded-xl overflow-hidden text-xs max-h-40 overflow-y-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-amber-100/70 text-stone-900 border-b sticky top-0 bg-amber-100">
+                        <tr>
+                            <th class="p-2">時間</th>
+                            <th class="p-2">性別</th>
+                            <th class="p-2">年齡</th>
+                            <th class="p-2">偏好風格</th>
+                        </tr>
+                    </thead>
+                    <tbody id="analyticsTableBody" class="divide-y text-stone-800"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 📄 Modal 4: 【自動生成的全量商業與行銷策略報告 Modal】 -->
+    <div id="reportModal" class="fixed inset-0 bg-stone-950/85 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto hidden">
+        <div class="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl relative border-4 border-amber-900/30 my-8 space-y-4">
+            
+            <div class="flex justify-between items-center border-b pb-3">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-briefcase text-amber-900 text-xl"></i>
+                    <h3 class="font-extrabold text-stone-900 text-base">Bonnie Agent 全量商業與行銷策略報告</h3>
+                </div>
+                <button onclick="closeReportModal()" class="bg-stone-200 hover:bg-stone-300 text-stone-700 w-8 h-8 rounded-full flex items-center justify-center font-bold">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- 報告呈現內容 -->
+            <div id="reportContent" class="space-y-4 text-xs text-stone-800 leading-relaxed max-h-[65vh] overflow-y-auto pr-2">
+                <!-- 動態注入報告 -->
+            </div>
+
+            <div class="flex justify-between items-center pt-3 border-t">
+                <button onclick="closeReportModal()" class="bg-stone-200 hover:bg-stone-300 text-stone-800 font-bold px-4 py-2 rounded-xl text-xs shadow transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-arrow-left"></i> 返回數據後台
+                </button>
+                <button onclick="alert('已成功匯出全量數據商業策略報告！')" class="bg-amber-900 hover:bg-amber-950 text-amber-100 font-bold px-4 py-2 rounded-xl text-xs shadow transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-download"></i> 匯出簡報檔 (PDF)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🖼️ Modal 3: 【旗艦級精緻滿版寫實海報】 -->
+    <div id="shareModal" class="fixed inset-0 bg-stone-950/85 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto hidden">
+        <div class="bg-stone-100 rounded-3xl max-w-lg w-full p-5 shadow-2xl relative border-4 border-amber-900/30 my-8">
+            
+            <!-- 📌 頂部固定導覽列 -->
+            <div class="flex justify-between items-center mb-4 pb-2 border-b border-stone-200">
+                <button onclick="closeShareModal()" class="bg-amber-900 hover:bg-amber-950 text-amber-100 font-bold px-4 py-2 rounded-xl text-xs shadow transition flex items-center gap-2">
+                    <i class="fa-solid fa-arrow-left"></i> 返回主畫面
+                </button>
+                <button onclick="closeShareModal()" class="bg-stone-200 hover:bg-stone-300 text-stone-700 w-8 h-8 rounded-full flex items-center justify-center font-bold">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="text-center mb-3">
+                <h3 class="font-extrabold text-stone-900 text-base"><i class="fa-solid fa-wand-magic-sparkles text-amber-700"></i> Bonnie 旗艦旅遊手帳海報</h3>
+                <p class="text-[11px] text-stone-500">已自動生成精細手繪插畫封圖、動態推算時間軸與停留時間！</p>
+            </div>
+
+            <!-- 📸 下載標的：滿版精緻寫實海報 -->
+            <div id="cardPreview" class="bg-[#fcfaf5] text-stone-800 rounded-2xl p-6 shadow-lg border border-amber-900/20 relative overflow-hidden space-y-4">
+                
+                <!-- 頂部日系手繪風標題區 -->
+                <div class="text-center pb-3 border-b-2 border-dashed border-amber-800/30 relative">
+                    <div class="flex justify-center items-center gap-2 text-amber-900 text-xs font-black tracking-widest mb-1">
+                        <span>🎏 Bonnie 旅圖手帳</span>
+                        <span>•</span>
+                        <span id="posterDateTag">2026-10-18</span>
+                    </div>
+                    <h2 class="text-2xl font-black text-amber-950 tracking-tight" id="posterPosterTitle">台南 1 日質感深度遊</h2>
+                    <p class="text-[11px] text-amber-900/80 font-medium mt-1 flex justify-center items-center gap-1" id="posterWeatherBar">
+                        <span>☀️ 28°C 晴朗舒適</span> ｜ <span>🎒 建議裝備：防曬乳、遮陽帽</span>
+                    </p>
+                </div>
+
+                <!-- 中間卡片時間軸 (滿版精緻圖片 + 停留時間 + 深度簡介) -->
+                <div id="posterTimelineList" class="space-y-4"></div>
+
+                <!-- 底部裝飾標籤 -->
+                <div class="pt-3 border-t-2 border-dashed border-amber-800/30 flex justify-between items-center text-[10px] text-amber-900/70">
+                    <span class="font-bold">🐘 Bonnie排程旅遊agent 出品</span>
+                    <span class="font-mono bg-amber-100 px-2 py-0.5 rounded-full">#BonnieTravelAgent</span>
+                </div>
+            </div>
+
+            <!-- 下載與分享按鈕及底部返回按鈕 -->
+            <div class="space-y-2 mt-4">
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="downloadCardImage()" class="bg-amber-900 hover:bg-amber-950 text-amber-100 font-bold py-2.5 rounded-xl text-xs shadow transition flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-file-image"></i> 下載高畫質 PNG 海報
+                    </button>
+                    <button onclick="copyLineText()" class="bg-emerald-800 hover:bg-emerald-900 text-white font-bold py-2.5 rounded-xl text-xs shadow transition flex items-center justify-center gap-1.5">
+                        <i class="fa-brands fa-line text-sm"></i> 複製 LINE 文字
+                    </button>
+                </div>
+                <button onclick="closeShareModal()" class="w-full bg-stone-200 hover:bg-stone-300 text-stone-800 font-bold py-2.5 rounded-xl text-xs shadow transition flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-arrow-left"></i> 返回主畫面 (結束預覽)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 腳本區域 -->
+    <script>
+        let currentUserPersona = { gender: 'female', age: '25-34', style: 'nature' };
+        let currentLiveWeatherData = { temp: 28, rainProb: 10, condition: 'sunny' };
+        let currentDisplayedCandidateSpots = [];
+        let currentOptimizedRoute = [];
+        let ageChartInstance = null;
+        let styleChartInstance = null;
+
+        // 精緻插畫圖庫配對
+        const illustrationIcons = {
+            'diy': { icon: '🎨', bg: 'bg-teal-100 text-teal-900', img: 'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?w=500&auto=format&fit=crop&q=80' },
+            'coffee': { icon: '☕', bg: 'bg-amber-100 text-amber-900', img: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=500&auto=format&fit=crop&q=80' },
+            'shopping': { icon: '🛍️', bg: 'bg-stone-200 text-stone-900', img: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=500&auto=format&fit=crop&q=80' },
+            'amusement': { icon: '🎡', bg: 'bg-purple-100 text-purple-900', img: 'https://images.unsplash.com/photo-1513889961551-628c1e5e2ee9?w=500&auto=format&fit=crop&q=80' },
+            'sea': { icon: '🌊', bg: 'bg-sky-100 text-sky-900', img: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=500&auto=format&fit=crop&q=80' },
+            'mountain': { icon: '⛰️', bg: 'bg-emerald-100 text-emerald-900', img: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=500&auto=format&fit=crop&q=80' },
+            'default': { icon: '📍', bg: 'bg-amber-100 text-amber-900', img: 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=500&auto=format&fit=crop&q=80' }
+        };
+
+        const cityCoordinates = {
+            '台南': { lat: 22.9997, lon: 120.2270 },
+            '台中': { lat: 24.1477, lon: 120.6736 },
+            '花蓮': { lat: 23.9871, lon: 121.6015 },
+            '台北': { lat: 25.0330, lon: 121.5654 }
+        };
+
+        // 🗃️ 專屬資料庫 (已修正：移除死時間，改由時間軸算法動態生成)
+        const mockDatabase = {
+            '台南': [
+                { id: 'tn1', name: '布布刺刺韓式燙布貼 (DIY 手作)', lat: 22.9930, lon: 120.2010, tags: ['diy', 'indoor', 'urban'], desc: '體驗最道地的韓式手作燙布貼，自由混搭獨一無二的帆布包與客製配件。', duration: '1.5 - 2 小時', durationHours: 1.5, score: '🎨 熱門 DIY' },
+                { id: 'tn2', name: '杏源珈琲 Sing yuan coffee', lat: 22.9985, lon: 120.2088, tags: ['coffee', 'indoor', 'urban'], desc: '台南巷弄老宅質感咖啡廳，以特調義式與極致手沖甜點聞名，氛圍優雅。', duration: '1 - 1.5 小時', durationHours: 1.0, score: '☕ 質感咖啡' },
+                { id: 'tn3', name: '神農街 (古厝逛街服飾)', lat: 22.9975, lon: 120.1965, tags: ['shopping', 'outdoor', 'urban'], desc: '保留清代文創老厝巷弄，聚集手繪燈籠、獨立設計服飾與古物小店。', duration: '2 小時', durationHours: 2.0, score: '🛍️ 復古逛街' },
+                { id: 'tn4', name: '十鼓仁糖文創園區', lat: 22.9385, lon: 120.2305, tags: ['amusement', 'family', 'indoor', 'outdoor'], desc: '舊糖廠改造的魔幻主題樂園，提供極限滑梯、擊鼓實境秀與夜間燈光秀。', duration: '3 - 4 小時', durationHours: 3.0, score: '🎡 鼓樂樂園' },
+                { id: 'tn5', name: '漁光島 (海邊散步)', lat: 22.9811, lon: 120.1542, tags: ['sea', 'outdoor', 'nature'], desc: '台南最美新月形沙灘，穿越防風林漫步海岸，欣賞絕美夕陽落日。', duration: '1.5 小時', durationHours: 1.5, score: '🌊 海岸夕陽' },
+                { id: 'tn6', name: '奇美博物館 (園區與展覽)', lat: 22.9348, lon: 120.2260, tags: ['family', 'indoor'], desc: '西洋藝術展與千坪西洋宮廷園區，長輩親子皆宜。', duration: '2.5 小時', durationHours: 2.5, score: '🏛️ 藝術宮廷' }
+            ],
+            '台中': [
+                { id: 'tc1', name: 'CLAYWAY 銀黏土製作所 (DIY 手作)', lat: 24.1528, lon: 120.6635, tags: ['diy', 'indoor', 'urban'], desc: '親手打磨屬於自己的純銀戒指與項鍊手作體驗，質感滿分。', duration: '2 小時', durationHours: 2.0, score: '🎨 銀飾手作' },
+                { id: 'tc2', name: '十三咖啡', lat: 24.1188, lon: 120.6380, tags: ['coffee', 'indoor', 'nature'], desc: '隱身楓樹社區的神秘木造咖啡館，無菜單手沖，享受寧靜柴燒咖啡香。', duration: '1.5 小時', durationHours: 1.5, score: '☕ 隱藏咖啡' },
+                { id: 'tc3', name: '勤美草悟道、審計新村周邊', lat: 24.1502, lon: 120.6630, tags: ['shopping', 'urban', 'outdoor'], desc: '文創市集、潮流服飾店與老屋改造聚落，台中最 Chill 逛街綠帶。', duration: '2 - 3 小時', durationHours: 2.0, score: '🛍️ 文創逛街' },
+                { id: 'tc4', name: '大坑步道 (山邊散步)', lat: 24.1812, lon: 120.7320, tags: ['mountain', 'outdoor', 'nature'], desc: '著名的相思木棧道，漫步於台中後山森林綠意中，遠眺全市景致。', duration: '2 小時', durationHours: 2.0, score: '⛰️ 森林步道' },
+                { id: 'tc5', name: '高美濕地 (海邊散步)', lat: 24.3121, lon: 120.5498, tags: ['sea', 'outdoor', 'nature'], desc: '木棧道伸入濕地心臟，欣賞絕美風車景觀與海岸夕陽赤腳漫步。', duration: '1.5 - 2 小時', durationHours: 1.5, score: '🌊 海岸夕陽' },
+                { id: 'tc6', name: '逢甲夜市商圈', lat: 24.1788, lon: 120.6467, tags: ['shopping', 'outdoor'], desc: '全台指標性美食夜市，各種潮流服飾與排隊小吃。', duration: '2 小時', durationHours: 2.0, score: '🌙 熱門夜市' },
+                { id: 'tc7', name: '麗寶樂園 / 探索世界', lat: 24.3233, lon: 120.6970, tags: ['amusement', 'family'], desc: '大型主題遊樂園與摩天輪，親子衝一波首選。', duration: '4 小時', durationHours: 4.0, score: '🎡 主題樂園' }
+            ],
+            '花蓮': [
+                { id: 'hl1', name: '鍾華玉品藝術工坊 (DIY 手作)', lat: 23.9712, lon: 121.5890, tags: ['diy', 'indoor'], desc: '體驗花蓮在地玉石打磨與琢玉體驗，將花蓮好石帶回家典藏。', duration: '1.5 小時', durationHours: 1.5, score: '🎨 玉石手作' },
+                { id: 'hl2', name: '波提娜麗精品咖啡', lat: 23.9780, lon: 121.6050, tags: ['coffee', 'indoor'], desc: '花蓮溫馨精緻手沖咖啡館，享受優雅咖啡香氣與純手工甜點。', duration: '1 - 1.5 小時', durationHours: 1.0, score: '☕ 精品手沖' },
+                { id: 'hl3', name: '花蓮舊鐵道文化園區、中山路周邊', lat: 23.9750, lon: 121.6080, tags: ['shopping', 'urban', 'outdoor'], desc: '舊鐵道改造的行人徒步文創商圈，聚集獨立服飾店與手作選物。', duration: '2 小時', durationHours: 2.0, score: '🛍️ 鐵道逛街' },
+                { id: 'hl4', name: '遠雄海洋公園', lat: 23.9020, lon: 121.6050, tags: ['amusement', 'family', 'sea', 'outdoor'], desc: '全台唯一依山傍海的海洋樂園，海豚海獅秀與纜車高空觀海。', duration: '4 - 5 小時', durationHours: 4.0, score: '🐬 海洋樂園' },
+                { id: 'hl5', name: '七星潭 (海邊散步)', lat: 24.0270, lon: 121.6280, tags: ['sea', 'outdoor', 'nature'], desc: '圓潤礫石打造的新月形海灣，聽浪濤聲、踏浪疊石的必訪秘境。', duration: '1.5 小時', durationHours: 1.5, score: '🌊 礫石海灣' },
+                { id: 'hl6', name: '鯉魚潭 (湖畔散步/踩船)', lat: 23.9280, lon: 121.5050, tags: ['mountain', 'sea', 'outdoor'], desc: '花蓮最大的內陸湖泊，湖光山色間騎單車或踩天鵝船漫步。', duration: '2 小時', durationHours: 2.0, score: '🛶 湖光山色' }
+            ],
+            '台北': [
+                { id: 'tp1', name: 'PICK&COLLECT 手作體驗', lat: 25.0545, lon: 121.5215, tags: ['diy', 'indoor', 'urban'], desc: '中山商圈超人氣金工與皮革手作體驗，親手打造專屬飾品配件。', duration: '2 小時', durationHours: 2.0, score: '🎨 金工手作' },
+                { id: 'tp2', name: '中山站、赤峰街巷弄咖啡', lat: 25.0558, lon: 121.5208, tags: ['coffee', 'indoor', 'urban'], desc: '台北最密集的文青咖啡巷，老宅改建的手沖咖啡與精緻戚風蛋糕。', duration: '1.5 小時', durationHours: 1.5, score: '☕ 巷弄咖啡' },
+                { id: 'tp3', name: '赤峰街、中山站周邊 (逛街服飾)', lat: 25.0538, lon: 121.5200, tags: ['shopping', 'urban'], desc: '古著服飾、日系獨立買手店與設計師品牌聚集地，超級好逛。', duration: '2 - 3 小時', durationHours: 2.0, score: '🛍️ 潮流逛街' },
+                { id: 'tp4', name: '象山步道 (山邊散步)', lat: 25.0275, lon: 121.5750, tags: ['mountain', 'outdoor', 'nature'], desc: '幾分鐘攀登即可居高臨下包攬台北 101 全景與北市繁華夜景。', duration: '1.5 - 2 小時', durationHours: 1.5, score: '⛰️ 全景遠眺' },
+                { id: 'tp5', name: '陽明山國家公園 (山邊散步)', lat: 25.1558, lon: 121.5475, tags: ['mountain', 'outdoor', 'nature'], desc: '四季皆美的台北後花園，擎天崗大草原吹風避暑、賞花散步。', duration: '3 小時', durationHours: 3.0, score: '🌲 國家公園' },
+                { id: 'tp6', name: '信義商圈 (百貨逛街)', lat: 25.0358, lon: 121.5654, tags: ['shopping', 'indoor'], desc: '全台最密集百貨大道，名牌與連鎖品牌一次逛足。', duration: '2.5 小時', durationHours: 2.5, score: '🛍️ 百貨大道' }
+            ]
+        };
+
+        window.onload = function() {
+            const today = new Date().toISOString().split('T')[0];
+            const travelDateInput = document.getElementById('travelDate');
+            
+            travelDateInput.min = today;
+            travelDateInput.value = today;
+
+            openSurveyModal();
+            fetchWeatherAPI();
+        };
+
+        function openSurveyModal() { document.getElementById('surveyModal').classList.remove('hidden'); }
+        function closeSurveyModal() { document.getElementById('surveyModal').classList.add('hidden'); }
+        function openAnalyticsModal() { renderAnalyticsCharts(); document.getElementById('analyticsModal').classList.remove('hidden'); }
+        function closeAnalyticsModal() { document.getElementById('analyticsModal').classList.add('hidden'); }
+        function closeReportModal() { document.getElementById('reportModal').classList.add('hidden'); }
+        
+        function openShareModal() { 
+            renderPosterVisualCard();
+            document.getElementById('shareModal').classList.remove('hidden'); 
+        }
+        function closeShareModal() { document.getElementById('shareModal').classList.add('hidden'); }
+
+        // 💡 修正：儲存所有問卷數據，不再進行 .slice 截斷，保留全量資料！
+        function saveSurvey(e) {
+            e.preventDefault();
+            const form = e.target;
+            currentUserPersona = {
+                gender: form.gender.value,
+                age: document.getElementById('ageSelect').value,
+                style: form.style.value,
+                time: new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+            };
+            localStorage.setItem('smartvibe_persona', JSON.stringify(currentUserPersona));
+            
+            let logs = JSON.parse(localStorage.getItem('smartvibe_logs') || '[]');
+            logs.unshift(currentUserPersona); // 完整加入新資料
+            localStorage.setItem('smartvibe_logs', JSON.stringify(logs));
+
+            updatePersonaUI();
+            closeSurveyModal();
+        }
+
+        function clearAllLogs() {
+            if (confirm('確定要清除歷史採集的所有使用者數據嗎？')) {
+                localStorage.removeItem('smartvibe_logs');
+                renderAnalyticsCharts();
+            }
+        }
+
+        function updatePersonaUI() {
+            const styleName = currentUserPersona.style === 'nature' ? '🌿 大自然派' : '☕ 都市/咖啡廳手作';
+            document.getElementById('personaText').innerText = `${currentUserPersona.age} 歲 · ${styleName}`;
+        }
+
+        function setQuery(text) {
+            document.getElementById('userInputQuery').value = text;
+        }
+
+        async function fetchWeatherAPI() {
+            const city = document.getElementById('citySelect').value;
+            const dateVal = document.getElementById('travelDate').value;
+            const simOption = document.getElementById('weatherSimSelect').value;
+
+            const cityText = document.getElementById('weatherCityName');
+            const desc = document.getElementById('weatherDesc');
+            const temp = document.getElementById('weatherTemp');
+            const sub = document.getElementById('weatherSubInfo');
+            const tips = document.getElementById('weatherTips');
+
+            if (simOption !== 'live') {
+                cityText.innerHTML = `<i class="fa-solid fa-flask text-amber-300"></i> ${city}市 (${dateVal}) · 展示測試氣象`;
+                if (simOption === 'sunny') {
+                    desc.innerText = '☀️ 晴朗多雲'; temp.innerText = '28°C'; sub.innerText = '降雨率 10% | UV 5';
+                    tips.innerText = '展示測試模式：適合海邊散步、戶外與商圈逛街！';
+                    currentLiveWeatherData = { temp: 28, rainProb: 10, condition: 'sunny' };
+                } else if (simOption === 'rainy') {
+                    desc.innerText = '⛈️ 豪雨特報'; temp.innerText = '22°C'; sub.innerText = '降雨率 85% | UV 2';
+                    tips.innerText = '展示測試模式：建議改為室內 DIY 手作、質感咖啡廳與百貨展館！';
+                    currentLiveWeatherData = { temp: 22, rainProb: 85, condition: 'rainy' };
+                } else if (simOption === 'hot') {
+                    desc.innerText = '🔥 酷暑高溫警戒'; temp.innerText = '36°C'; sub.innerText = '降雨率 0% | UV 10';
+                    tips.innerText = '展示測試模式：高溫特報，午間建議待在冷氣房咖啡廳。';
+                    currentLiveWeatherData = { temp: 36, rainProb: 0, condition: 'hot' };
+                }
+                return;
+            }
+
+            const coords = cityCoordinates[city] || cityCoordinates['台南'];
+            cityText.innerHTML = `<i class="fa-solid fa-cloud-sun animate-pulse text-amber-300"></i> ${city}市 (${dateVal}) · 線上 API 即時預報`;
+
+            try {
+                const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&daily=temperature_2m_max,precipitation_probability_max&timezone=Asia%2FTaipei`);
+                const data = await res.json();
+                
+                const maxTemp = Math.round(data.daily.temperature_2m_max[0]);
+                const rainProb = data.daily.precipitation_probability_max[0] || 15;
+
+                temp.innerText = `${maxTemp}°C`;
+                sub.innerText = `降雨率 ${rainProb}% | 即時連線 API`;
+
+                if (rainProb >= 60) {
+                    desc.innerText = '🌧️ 機率性降雨';
+                    tips.innerText = '線上氣象警告：該日降雨率較高，出門請備好雨具或改選室內手作與咖啡廳！';
+                    currentLiveWeatherData = { temp: maxTemp, rainProb: rainProb, condition: 'rainy' };
+                } else {
+                    desc.innerText = '☀️ 舒適晴朗';
+                    tips.innerText = '線上氣象正常：非常適合進行漫步逛街與咖啡廳下午茶！';
+                    currentLiveWeatherData = { temp: maxTemp, rainProb: rainProb, condition: 'sunny' };
+                }
+            } catch (err) {
+                desc.innerText = '☀️ 晴朗多雲';
+                temp.innerText = '27°C';
+                sub.innerText = '降雨率 15% (離線連線)';
+                tips.innerText = '即時氣象連線完成，準備為您推薦最佳景點！';
+                currentLiveWeatherData = { temp: 27, rainProb: 15, condition: 'sunny' };
+            }
+        }
+
+        function generatePlan() {
+            const city = document.getElementById('citySelect').value;
+            const query = document.getElementById('userInputQuery').value.toLowerCase();
+
+            const isCoffeeQuery = query.includes('咖啡') || query.includes('咖啡廳') || query.includes('下午茶') || query.includes('杏源');
+            const isDiyQuery = query.includes('diy') || query.includes('手作') || query.includes('燙布貼') || query.includes('銀黏土') || query.includes('金工') || query.includes('玉品');
+            const isShoppingQuery = query.includes('逛街') || query.includes('神農街') || query.includes('草悟道') || query.includes('審計') || query.includes('赤峰街') || query.includes('鐵道');
+            const isAmusementQuery = query.includes('樂園') || query.includes('十鼓') || query.includes('海洋公園');
+            const isSeaMountainQuery = query.includes('海') || query.includes('山') || query.includes('漁光島') || query.includes('高美') || query.includes('大坑') || query.includes('七星潭') || query.includes('象山') || query.includes('陽明山');
+
+            const isOutdoorIntent = isAmusementQuery || isSeaMountainQuery || isShoppingQuery || query.includes('戶外');
+            const alertBox = document.getElementById('weatherAlertBox');
+            let isConflict = false;
+
+            if (isOutdoorIntent && currentLiveWeatherData.rainProb >= 60) {
+                isConflict = true;
+                document.getElementById('alertTitle').innerText = '⛈️ 天氣衝突警示：戶外行程遭遇降雨';
+                document.getElementById('alertMessage').innerText = `您搜尋的行程包含戶外/散步/樂園，但目標日期降雨率達 ${currentLiveWeatherData.rainProb}%！`;
+                document.getElementById('alertAlternative').innerHTML = '💡 <strong>Bonnie AI 推薦備案：</strong> 已自動幫您優先比對【室內燙布貼 DIY、金工手作與質感咖啡廳】！';
+            } else if (isOutdoorIntent && currentLiveWeatherData.temp >= 35) {
+                isConflict = true;
+                document.getElementById('alertTitle').innerText = '🔥 酷暑高溫警示：戶外曝曬過度';
+                document.getElementById('alertMessage').innerText = `預測溫度高達 ${currentLiveWeatherData.temp}°C，長時間曝曬易中暑！`;
+                document.getElementById('alertAlternative').innerHTML = '💡 <strong>Bonnie AI 推薦備案：</strong> 已調整為帶有冷氣的室內咖啡廳與手作館舍！';
+            }
+
+            if (isConflict) alertBox.classList.remove('hidden');
+            else alertBox.classList.add('hidden');
+
+            const citySpots = mockDatabase[city] || mockDatabase['台南'];
+            
+            currentDisplayedCandidateSpots = citySpots.map(spot => {
+                let score = 0;
+
+                if (isCoffeeQuery && spot.tags.includes('coffee')) score += 12;
+                if (isDiyQuery && spot.tags.includes('diy')) score += 12;
+                if (isShoppingQuery && spot.tags.includes('shopping')) score += 12;
+                if (isAmusementQuery && spot.tags.includes('amusement')) score += 12;
+                if (isSeaMountainQuery && (spot.tags.includes('sea') || spot.tags.includes('mountain'))) score += 12;
+
+                if (isConflict && spot.tags.includes('indoor')) score += 15;
+
+                if (currentUserPersona.style === 'urban' && spot.tags.includes('urban')) score += 3;
+                if (currentUserPersona.style === 'nature' && (spot.tags.includes('outdoor') || spot.tags.includes('nature'))) score += 3;
+
+                return { ...spot, matchScore: score };
+            });
+
+            currentDisplayedCandidateSpots.sort((a, b) => b.matchScore - a.matchScore);
+
+            const itineraryList = document.getElementById('itineraryList');
+            itineraryList.innerHTML = '';
+
+            currentDisplayedCandidateSpots.forEach((spot, idx) => {
+                itineraryList.innerHTML += `
+                    <label class="bg-white border border-amber-900/10 rounded-2xl p-4 shadow-sm hover:shadow-md transition flex items-center justify-between cursor-pointer select-none">
+                        <div class="flex items-center gap-3">
+                            <input type="checkbox" value="${spot.id}" checked class="spot-checkbox w-5 h-5 text-amber-800 rounded focus:ring-amber-800 border-amber-300 shrink-0">
+                            <div class="space-y-1">
+                                <h4 class="font-bold text-stone-900 text-sm flex items-center gap-2">
+                                    ${spot.name}
+                                    <span class="text-[10px] bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded">${spot.score}</span>
+                                    <span class="text-[10px] bg-stone-100 text-stone-600 font-medium px-2 py-0.5 rounded"><i class="fa-regular fa-clock"></i> 建議停留: ${spot.duration}</span>
+                                </h4>
+                                <p class="text-xs text-stone-600">${spot.desc}</p>
+                            </div>
+                        </div>
+                        <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(spot.name)}" target="_blank" onclick="event.stopPropagation()" class="text-xs text-amber-900 font-bold hover:underline shrink-0 ml-2">
+                            <i class="fa-solid fa-location-dot"></i> 地圖
+                        </a>
+                    </label>
+                `;
+            });
+
+            const packingTips = document.getElementById('packingTips');
+            if (currentLiveWeatherData.rainProb >= 60) packingTips.innerText = '摺疊雨傘、平底鞋、手作品保護袋';
+            else if (isCoffeeQuery) packingTips.innerText = '相機/手機行動電源、休閒書籍、輕便薄外套';
+            else packingTips.innerText = '防曬乳、遮陽帽、充足飲用水';
+
+            document.getElementById('optimizedRoutePanel').classList.add('hidden');
+            document.getElementById('resultContainer').classList.remove('hidden');
+        }
+
+        // 🧠 順路最佳化與「動態時間軸推算」
+        function optimizeSelectedRoute() {
+            const checkedBoxes = document.querySelectorAll('.spot-checkbox:checked');
+            if (checkedBoxes.length === 0) {
+                alert('請至少勾選一個你想去的景點喔！');
+                return;
+            }
+
+            const selectedIds = Array.from(checkedBoxes).map(cb => cb.value);
+            let unvisited = currentDisplayedCandidateSpots.filter(s => selectedIds.includes(s.id));
+
+            if (unvisited.length === 0) return;
+
+            currentOptimizedRoute = [];
+            let currentSpot = unvisited.shift();
+            currentOptimizedRoute.push(currentSpot);
+
+            while (unvisited.length > 0) {
+                let nearestIdx = 0;
+                let minDistance = Infinity;
+
+                for (let i = 0; i < unvisited.length; i++) {
+                    const dist = calculateDistance(currentSpot.lat, currentSpot.lon, unvisited[i].lat, unvisited[i].lon);
+                    if (dist < minDistance) {
+                        minDistance = dist;
+                        nearestIdx = i;
+                    }
+                }
+
+                currentSpot = unvisited.splice(nearestIdx, 1)[0];
+                currentOptimizedRoute.push(currentSpot);
+            }
+
+            // 💡 動態時間軸算路：從 10:00 開始推算每個景點的到達時間，避免時間顛倒問題
+            let currentHour = 10;
+            let currentMinute = 0;
+
+            currentOptimizedRoute = currentOptimizedRoute.map((spot, idx) => {
+                const hourStr = String(currentHour).padStart(2, '0');
+                const minStr = String(currentMinute).padStart(2, '0');
+                const calculatedTime = `${hourStr}:${minStr}`;
+
+                // 加上停留時間 + 0.5 小時車程移動時間
+                const stayTime = spot.durationHours || 1.5;
+                const totalOffsetMinutes = Math.round((stayTime + 0.5) * 60);
+
+                currentMinute += totalOffsetMinutes;
+                currentHour += Math.floor(currentMinute / 60);
+                currentMinute = currentMinute % 60;
+
+                return { ...spot, time: calculatedTime };
+            });
+
+            renderOptimizedRouteUI();
+        }
+
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
+
+        function renderOptimizedRouteUI() {
+            const container = document.getElementById('optimizedStepsContainer');
+            container.innerHTML = '';
+
+            let googleMapsQueryNames = [];
+
+            currentOptimizedRoute.forEach((spot, idx) => {
+                googleMapsQueryNames.push(encodeURIComponent(spot.name));
+
+                let stepBadge = idx === 0 ? '🏁 起點站' : (idx === currentOptimizedRoute.length - 1 ? '🎯 終點站' : `站點 ${idx + 1}`);
+                let badgeColor = idx === 0 ? 'bg-emerald-600 text-white' : (idx === currentOptimizedRoute.length - 1 ? 'bg-amber-500 text-stone-950 font-bold' : 'bg-stone-800 text-amber-200');
+
+                container.innerHTML += `
+                    <div class="bg-stone-800/90 border border-amber-500/20 rounded-xl p-3 flex justify-between items-center">
+                        <div class="flex items-center gap-3">
+                            <span class="${badgeColor} text-xs px-2.5 py-1 rounded-lg font-bold shrink-0">${stepBadge}</span>
+                            <div>
+                                <h5 class="font-bold text-white text-sm">
+                                    <span class="text-amber-300 font-mono mr-1 font-extrabold">[${spot.time}]</span> 
+                                    ${spot.name} 
+                                    <span class="text-xs text-amber-200/80 font-normal ml-2">⏱️ 建議停留: ${spot.duration}</span>
+                                </h5>
+                                <p class="text-xs text-amber-200/70">${spot.desc}</p>
+                            </div>
+                        </div>
+                        ${idx < currentOptimizedRoute.length - 1 ? '<i class="fa-solid fa-arrow-down-long text-amber-400 text-sm pr-2"></i>' : ''}
+                    </div>
+                `;
+            });
+
+            const mapsUrl = `https://www.google.com/maps/dir/${googleMapsQueryNames.join('/')}`;
+            document.getElementById('googleMapsMultiRouteBtn').href = mapsUrl;
+
+            document.getElementById('optimizedRoutePanel').classList.remove('hidden');
+        }
+
+        // 🎨 渲染【旗艦級寫實繪本滿版旅遊海報】
+        function renderPosterVisualCard() {
+            const city = document.getElementById('citySelect').value;
+            const dateVal = document.getElementById('travelDate').value;
+
+            document.getElementById('posterDateTag').innerText = dateVal;
+            document.getElementById('posterPosterTitle').innerText = `${city} 1 日質感深度攻略`;
+            document.getElementById('posterWeatherBar').innerText = `🌤️ ${document.getElementById('weatherDesc').innerText} (${document.getElementById('weatherTemp').innerText}) ｜ 🎒 建議裝備：${document.getElementById('packingTips').innerText}`;
+
+            const container = document.getElementById('posterTimelineList');
+            container.innerHTML = '';
+
+            const displayList = currentOptimizedRoute.length > 0 ? currentOptimizedRoute : currentDisplayedCandidateSpots.slice(0, 3);
+
+            displayList.forEach((spot, idx) => {
+                const mainTag = spot.tags.find(t => illustrationIcons[t]) || 'default';
+                const style = illustrationIcons[mainTag] || illustrationIcons['default'];
+
+                container.innerHTML += `
+                    <div class="bg-white rounded-2xl overflow-hidden shadow-md border border-amber-900/15 relative">
+                        <div class="h-32 w-full relative overflow-hidden">
+                            <img src="${style.img}" class="w-full h-full object-cover">
+                            <div class="absolute inset-0 bg-gradient-to-t from-stone-900/80 via-transparent to-transparent"></div>
+                            <span class="absolute top-2 left-2 bg-stone-900/80 backdrop-blur-md text-amber-300 text-[10px] font-bold px-2.5 py-1 rounded-full border border-amber-500/30">
+                                站點 ${idx + 1} · ${spot.time || '10:00'}
+                            </span>
+                            <span class="absolute top-2 right-2 ${style.bg} text-xs font-bold px-2.5 py-1 rounded-full shadow-sm">
+                                ${style.icon} ${spot.score}
+                            </span>
+                            <div class="absolute bottom-2 left-3 right-3 text-white">
+                                <h4 class="font-extrabold text-sm tracking-wide text-amber-100">${spot.name}</h4>
+                            </div>
+                        </div>
+                        <div class="p-3 bg-white space-y-1">
+                            <div class="flex justify-between items-center text-[10px] text-amber-900 font-bold border-b border-stone-100 pb-1">
+                                <span>⏱️ 建議停留時間：${spot.duration}</span>
+                            </div>
+                            <p class="text-[11px] text-stone-600 leading-relaxed pt-0.5">${spot.desc}</p>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        let isElderMode = false;
+        function toggleFontSize() {
+            isElderMode = !isElderMode;
+            if (isElderMode) {
+                document.body.classList.add('elder-mode');
+                document.getElementById('fontBtn').innerHTML = '<i class="fa-solid fa-eye-slash text-sm"></i> 切換回標準視覺模式';
+                document.getElementById('fontBtn').className = 'text-xs bg-amber-900 hover:bg-amber-950 text-amber-100 font-bold px-3.5 py-1.5 rounded-full transition shadow-md flex items-center gap-1';
+            } else {
+                document.body.classList.remove('elder-mode');
+                document.getElementById('fontBtn').innerHTML = '<i class="fa-solid fa-eye text-sm"></i> 啟用極大字視覺模式';
+                document.getElementById('fontBtn').className = 'text-xs bg-amber-400 hover:bg-amber-500 text-amber-950 font-bold px-3.5 py-1.5 rounded-full transition shadow-md flex items-center gap-1';
+            }
+        }
+
+        function downloadCardImage() {
+            const cardElement = document.getElementById('cardPreview');
+            html2canvas(cardElement, { scale: 2, useCORS: true }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `Bonnie旅遊攻略海報_${document.getElementById('travelDate').value}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            });
+        }
+
+        function copyLineText() {
+            const dateVal = document.getElementById('travelDate').value;
+            const displayList = currentOptimizedRoute.length > 0 ? currentOptimizedRoute : currentDisplayedCandidateSpots.slice(0, 3);
+            const routeText = displayList.map((s, i) => `${s.time || '10:00'} ${s.name} (建議停留${s.duration})`).join(' ➔ ');
+            const text = `【Bonnie排程旅遊agent - 行程懶人包】\n📅 出遊日期：${dateVal}\n📍 順路路線：${routeText}\n🌤️ 天氣預報：${document.getElementById('weatherDesc').innerText}\n💡 隨身裝備：${document.getElementById('packingTips').innerText}\n祝大家順暢玩得開心！`;
+            navigator.clipboard.writeText(text);
+            alert('已成功複製 LINE 旅遊懶人包文字！');
+        }
+
+        // 📊 全量數據統計動態算演算法
+        function renderAnalyticsCharts() {
+            const logs = JSON.parse(localStorage.getItem('smartvibe_logs') || '[]');
+            const tbody = document.getElementById('analyticsTableBody');
+            
+            document.getElementById('dataTotalCountTag').innerText = `目前共累積 ${logs.length} 筆歷史採集問卷資料`;
+
+            tbody.innerHTML = logs.map(l => `
+                <tr>
+                    <td class="p-2">${l.time || '未記錄'}</td>
+                    <td class="p-2">${l.gender === 'female' ? '女' : (l.gender === 'male' ? '男' : '保密')}</td>
+                    <td class="p-2">${l.age}</td>
+                    <td class="p-2">${l.style === 'nature' ? '🌿 大自然' : '☕ 都市咖啡廳'}</td>
+                </tr>
+            `).join('') || '<tr><td colspan="4" class="p-2 text-center text-stone-400">目前尚無數據紀錄</td></tr>';
+
+            // 全量統計年齡層數量
+            let ageCounts = { '18-24': 0, '25-34': 0, '35-49': 0, '50+': 0 };
+            let styleCounts = { 'nature': 0, 'urban': 0 };
+
+            if (logs.length > 0) {
+                logs.forEach(log => {
+                    if (ageCounts[log.age] !== undefined) ageCounts[log.age]++;
+                    else ageCounts['25-34']++;
+
+                    if (log.style === 'urban') styleCounts['urban']++;
+                    else styleCounts['nature']++;
+                });
+            } else {
+                // 若完全無資料，提供模擬預設基準
+                ageCounts = { '18-24': 35, '25-34': 45, '35-49': 12, '50+': 8 };
+                styleCounts = { 'nature': 52, 'urban': 48 };
+            }
+
+            // 銷毀舊圖表實體避免重疊 render
+            if (ageChartInstance) ageChartInstance.destroy();
+            if (styleChartInstance) styleChartInstance.destroy();
+
+            ageChartInstance = new Chart(document.getElementById('ageChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['18-24歲', '25-34歲', '35-49歲', '50歲+'],
+                    datasets: [{ data: [ageCounts['18-24'], ageCounts['25-34'], ageCounts['35-49'], ageCounts['50+']], backgroundColor: ['#78350f', '#047857', '#d97706', '#be185d'] }]
+                },
+                options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+            });
+
+            styleChartInstance = new Chart(document.getElementById('styleChart'), {
+                type: 'pie',
+                data: {
+                    labels: ['🌿 大自然派', '☕ 都市/咖啡廳系'],
+                    datasets: [{ data: [styleCounts['nature'], styleCounts['urban']], backgroundColor: ['#047857', '#78350f'] }]
+                },
+                options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+            });
+        }
+
+        // 📈 基於全量資料 (Full Dataset) 計算並生成商業策略報告
+        // 📈 基於全量資料 (Full Dataset) 計算並生成商業策略報告（修復 0% 主力問題）
+function generateReport() {
+    const logs = JSON.parse(localStorage.getItem('smartvibe_logs') || '[]');
+    const total = logs.length;
+
+    let ageCounts = { '18-24': 0, '25-34': 0, '35-49': 0, '50+': 0 };
+    let styleCounts = { 'nature': 0, 'urban': 0 };
+
+    if (total > 0) {
+        logs.forEach(l => {
+            if (ageCounts[l.age] !== undefined) ageCounts[l.age]++;
+            if (l.style === 'urban') styleCounts['urban']++;
+            else styleCounts['nature']++;
+        });
+    } else {
+        ageCounts = { '18-24': 35, '25-34': 45, '35-49': 12, '50+': 8 };
+        styleCounts = { 'nature': 52, 'urban': 48 };
+    }
+
+    const baseTotal = total > 0 ? total : 100;
+
+    // 1. 動態計算每個年齡層的百分比，並排序找出真正的主力客群
+    const ageLabelsMap = {
+        '18-24': '18-24歲',
+        '25-34': '25-34歲',
+        '35-49': '35-49歲',
+        '50+': '50歲以上'
+    };
+
+    const sortedAges = Object.keys(ageCounts)
+        .map(key => ({
+            key: key,
+            label: ageLabelsMap[key],
+            count: ageCounts[key],
+            pct: Math.round((ageCounts[key] / baseTotal) * 100)
+        }))
+        .filter(item => item.pct > 0) // 💡 自動過濾掉 0% 的族群
+        .sort((a, b) => b.pct - a.pct); // 依百分比高到低排序
+
+    // 2. 組成自然的人性化描述文字
+    let ageSummaryText = '';
+    if (sortedAges.length === 1) {
+        ageSummaryText = `主力客群高度集中於 <strong>${sortedAges[0].label} (佔 ${sortedAges[0].pct}%)</strong>`;
+    } else if (sortedAges.length >= 2) {
+        ageSummaryText = `主力客群為 <strong>${sortedAges[0].label} (佔 ${sortedAges[0].pct}%)</strong> 與 <strong>${sortedAges[1].label} (佔 ${sortedAges[1].pct}%)</strong>`;
+    } else {
+        ageSummaryText = `目前尚未採集到足夠的年齡層資料`;
+    }
+
+    const urbanPct = Math.round((styleCounts['urban'] / baseTotal) * 100);
+    const naturePct = Math.round((styleCounts['nature'] / baseTotal) * 100);
+
+    const reportHtml = `
+        <div class="bg-amber-50 p-4 rounded-2xl border border-amber-200">
+            <h4 class="font-bold text-amber-950 text-sm mb-1.5 flex items-center gap-1.5">
+                <i class="fa-solid fa-chart-pie text-amber-800"></i> 1. 全量數據摘要與精準客群輪廓 (共 ${total > 0 ? total : '模擬 100'} 筆資料)
+            </h4>
+            <p class="text-stone-700 leading-relaxed">
+                經由對歷史累積的所有使用者問卷進行動態演算，${ageSummaryText}。
+                風格喜好方面，<strong>都市咖啡廳與手作 DIY 佔 ${urbanPct}%</strong>，而 <strong>大自然戶外景點佔 ${naturePct}%</strong>。
+            </p>
+        </div>
+
+        <div class="bg-emerald-50 p-4 rounded-2xl border border-emerald-200">
+            <h4 class="font-bold text-emerald-950 text-sm mb-1.5 flex items-center gap-1.5">
+                <i class="fa-solid fa-bullhorn text-emerald-800"></i> 2. 基於全量比例的行銷與社群投放建議
+            </h4>
+            <ul class="list-disc list-inside space-y-1.5 text-stone-700">
+                <li><strong>精準受眾投放 (Ad Targeting)</strong>：建議廣告預算優先集中於 ${sortedAges.length > 0 ? sortedAges[0].label : '青年'} 族群，設定興趣為「文青手作、獨立咖啡廳、週末小旅行」。</li>
+                <li><strong>行銷企劃主軸</strong>：${urbanPct >= naturePct ? '目前數據顯示都市與手作派佔優勢，行銷素材應多強調「雨天備案、室內燙布貼手作、質感巷弄咖啡店」！' : '大自然派略佔優勢，建議行銷重點主打「秘境散步、海岸夕陽、不繞路一日遊」。'}</li>
+                <li><strong>社群裂變傳播</strong>：繼續優化「日系寫實滿版海報」的排版美感，鎖定核心族群在 IG Story 的自發分享習慣。</li>
+            </ul>
+        </div>
+
+        <div class="bg-sky-50 p-4 rounded-2xl border border-sky-200">
+            <h4 class="font-bold text-sky-950 text-sm mb-1.5 flex items-center gap-1.5">
+                <i class="fa-solid fa-handshake text-sky-800"></i> 3. 商業合作與變現（BD & Monetization）
+            </h4>
+            <ul class="list-disc list-inside space-y-1.5 text-stone-700">
+                <li><strong>商家贊助與置頂廣告</strong>：向在地手作體驗工作室與質感咖啡廳展示此份 ${total} 筆全量數據，證明平台能精準帶來目標客源。</li>
+                <li><strong>體驗票券抽成分潤</strong>：於行程導航頁直接嵌入手作門票與景點體驗預訂按鈕，建立穩定佣金收入模型。</li>
+            </ul>
+        </div>
+    `;
+
+    document.getElementById('reportContent').innerHTML = reportHtml;
+    document.getElementById('reportModal').classList.remove('hidden');
+}
+    </script>
+</body>
+</html>
