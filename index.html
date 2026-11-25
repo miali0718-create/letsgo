@@ -186,16 +186,29 @@
 
         <!-- 景點與路線清單結果區 -->
         <div id="resultContainer" class="hidden space-y-4">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 bg-amber-100/60 p-4 rounded-2xl border border-amber-300/60">
+            <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 bg-amber-100/60 p-4 rounded-2xl border border-amber-300/60">
                 <div>
                     <h3 class="font-bold text-amber-950 text-base flex items-center gap-2">
                         <i class="fa-solid fa-list-check text-amber-800"></i> 請勾選你想去的景點 (包含建議停留時間)
                     </h3>
-                    <p class="text-xs text-amber-800 mt-0.5">勾選後點擊右側按鈕，Bonnie AI 將自動為您規劃不繞路最佳順序、推算時間軸並生成高畫質海報！</p>
+                    <p class="text-xs text-amber-800 mt-0.5">勾選後設定出發條件，Bonnie AI 將依黃金時段與距離自動規劃最佳路線！</p>
                 </div>
-                <button onclick="optimizeSelectedRoute()" class="bg-gradient-to-r from-emerald-800 to-teal-800 hover:from-emerald-900 hover:to-teal-900 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-md flex items-center gap-1.5 transition shrink-0">
-                    <i class="fa-solid fa-route text-amber-300"></i> 順路排序並產生旗艦海報
-                </button>
+                
+                <!-- 出發時間與交通方式控制列 -->
+                <div class="flex flex-wrap items-center gap-2 w-full lg:w-auto justify-end">
+                    <div class="flex items-center gap-1 bg-white px-2.5 py-1.5 rounded-xl border border-amber-300 text-xs">
+                        <i class="fa-regular fa-clock text-amber-800"></i>
+                        <span class="font-bold text-amber-950">出發:</span>
+                        <input type="time" id="startTimeInput" value="10:00" class="font-bold text-stone-800 outline-none bg-transparent">
+                    </div>
+                    <select id="transportModeSelect" class="bg-white px-2.5 py-2 rounded-xl border border-amber-300 text-xs font-bold text-amber-950 outline-none">
+                        <option value="car">🚗 自駕 / 騎車</option>
+                        <option value="transit">🚌 大眾運輸 / 步行</option>
+                    </select>
+                    <button onclick="optimizeSelectedRoute()" class="bg-gradient-to-r from-emerald-800 to-teal-800 hover:from-emerald-900 hover:to-teal-900 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-md flex items-center gap-1.5 transition shrink-0">
+                        <i class="fa-solid fa-route text-amber-300"></i> 順路排序並產生旗艦海報
+                    </button>
+                </div>
             </div>
 
             <!-- 景點選擇清單 -->
@@ -208,7 +221,7 @@
                         <i class="fa-solid fa-compass text-amber-400 text-xl"></i>
                         <div>
                             <h4 class="font-bold text-amber-300 text-base">🗺️ Bonnie AI 順路路線與動態時間軸規劃完成！</h4>
-                            <p class="text-xs text-amber-200/80">已為您消除繞路，並依停留時間自動計算最佳抵達時間！</p>
+                            <p class="text-xs text-amber-200/80">已依出發時間、時段屬性與交通距離消除繞路並推算時間軸！</p>
                         </div>
                     </div>
                     <button onclick="openShareModal()" class="bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold text-xs px-3.5 py-2 rounded-xl shadow transition flex items-center gap-1">
@@ -216,10 +229,10 @@
                     </button>
                 </div>
 
-                <div id="optimizedStepsContainer" class="space-y-3 text-sm"></div>
+                <div id="optimizedStepsContainer" class="space-y-2 text-sm"></div>
 
                 <div class="pt-2 flex justify-between items-center">
-                    <span class="text-xs text-amber-200/70">行程順序已達最短距離最佳化</span>
+                    <span class="text-xs text-amber-200/70">行程順序已達時段與距離雙重最佳化</span>
                     <a id="googleMapsMultiRouteBtn" href="#" target="_blank" class="bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold px-4 py-2 rounded-xl transition flex items-center gap-1">
                         <i class="fa-solid fa-map-location-dot"></i> 一鍵開啟 Google Maps 多點連線導航
                     </a>
@@ -292,7 +305,7 @@
         </div>
     </div>
 
-    <!-- Modal 2: 後台數據分析 Dashboard Modal (已升級為全量累積資料動態計算) -->
+    <!-- Modal 2: 後台數據分析 Dashboard Modal -->
     <div id="analyticsModal" class="fixed inset-0 bg-stone-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto border-2 border-amber-900">
             <button onclick="closeAnalyticsModal()" class="absolute right-4 top-4 text-stone-400 hover:text-stone-700 text-lg"><i class="fa-solid fa-xmark"></i></button>
@@ -342,7 +355,7 @@
         </div>
     </div>
 
-    <!-- 📄 Modal 4: 【自動生成的全量商業與行銷策略報告 Modal】 -->
+    <!-- Modal 4: 自動生成的全量商業與行銷策略報告 Modal -->
     <div id="reportModal" class="fixed inset-0 bg-stone-950/85 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto hidden">
         <div class="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl relative border-4 border-amber-900/30 my-8 space-y-4">
             
@@ -356,9 +369,7 @@
                 </button>
             </div>
 
-            <!-- 報告呈現內容 -->
             <div id="reportContent" class="space-y-4 text-xs text-stone-800 leading-relaxed max-h-[65vh] overflow-y-auto pr-2">
-                <!-- 動態注入報告 -->
             </div>
 
             <div class="flex justify-between items-center pt-3 border-t">
@@ -372,11 +383,11 @@
         </div>
     </div>
 
-    <!-- 🖼️ Modal 3: 【旗艦級精緻滿版寫實海報】 -->
+    <!-- Modal 3: 旗艦級精緻滿版寫實海報 -->
     <div id="shareModal" class="fixed inset-0 bg-stone-950/85 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto hidden">
         <div class="bg-stone-100 rounded-3xl max-w-lg w-full p-5 shadow-2xl relative border-4 border-amber-900/30 my-8">
             
-            <!-- 📌 頂部固定導覽列 -->
+            <!-- 頂部固定導覽列 -->
             <div class="flex justify-between items-center mb-4 pb-2 border-b border-stone-200">
                 <button onclick="closeShareModal()" class="bg-amber-900 hover:bg-amber-950 text-amber-100 font-bold px-4 py-2 rounded-xl text-xs shadow transition flex items-center gap-2">
                     <i class="fa-solid fa-arrow-left"></i> 返回主畫面
@@ -391,7 +402,7 @@
                 <p class="text-[11px] text-stone-500">已自動生成精細手繪插畫封圖、動態推算時間軸與停留時間！</p>
             </div>
 
-            <!-- 📸 下載標的：滿版精緻寫實海報 -->
+            <!-- 下載標的：滿版精緻寫實海報 -->
             <div id="cardPreview" class="bg-[#fcfaf5] text-stone-800 rounded-2xl p-6 shadow-lg border border-amber-900/20 relative overflow-hidden space-y-4">
                 
                 <!-- 頂部日系手繪風標題區 -->
@@ -407,7 +418,7 @@
                     </p>
                 </div>
 
-                <!-- 中間卡片時間軸 (滿版精緻圖片 + 停留時間 + 深度簡介) -->
+                <!-- 中間卡片時間軸 -->
                 <div id="posterTimelineList" class="space-y-4"></div>
 
                 <!-- 底部裝飾標籤 -->
@@ -461,7 +472,15 @@
             '台北': { lat: 25.0330, lon: 121.5654 }
         };
 
-        // 🗃️ 專屬資料庫 (已修正：移除死時間，改由時間軸算法動態生成)
+        // 各縣市交通樞紐起點（確保路線從市中心車站順暢往外擴散，不會從偏遠郊區倒著玩）
+        const cityStartHubs = {
+            '台南': { lat: 22.9971, lon: 120.2129 }, // 台南火車站
+            '台中': { lat: 24.1368, lon: 120.6850 }, // 台中火車站
+            '花蓮': { lat: 23.9929, lon: 121.6011 }, // 花蓮火車站
+            '台北': { lat: 25.0478, lon: 121.5170 }  // 台北車站
+        };
+
+        // 專屬資料庫
         const mockDatabase = {
             '台南': [
                 { id: 'tn1', name: '布布刺刺韓式燙布貼 (DIY 手作)', lat: 22.9930, lon: 120.2010, tags: ['diy', 'indoor', 'urban'], desc: '體驗最道地的韓式手作燙布貼，自由混搭獨一無二的帆布包與客製配件。', duration: '1.5 - 2 小時', durationHours: 1.5, score: '🎨 熱門 DIY' },
@@ -521,7 +540,6 @@
         }
         function closeShareModal() { document.getElementById('shareModal').classList.add('hidden'); }
 
-        // 💡 修正：儲存所有問卷數據，不再進行 .slice 截斷，保留全量資料！
         function saveSurvey(e) {
             e.preventDefault();
             const form = e.target;
@@ -534,7 +552,7 @@
             localStorage.setItem('smartvibe_persona', JSON.stringify(currentUserPersona));
             
             let logs = JSON.parse(localStorage.getItem('smartvibe_logs') || '[]');
-            logs.unshift(currentUserPersona); // 完整加入新資料
+            logs.unshift(currentUserPersona);
             localStorage.setItem('smartvibe_logs', JSON.stringify(logs));
 
             updatePersonaUI();
@@ -684,7 +702,7 @@
                                 <p class="text-xs text-stone-600">${spot.desc}</p>
                             </div>
                         </div>
-                        <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(spot.name)}" target="_blank" onclick="event.stopPropagation()" class="text-xs text-amber-900 font-bold hover:underline shrink-0 ml-2">
+                        <a href="https://www.google.com/maps/search/?api=1&query=${spot.lat},${spot.lon}" target="_blank" onclick="event.stopPropagation()" class="text-xs text-amber-900 font-bold hover:underline shrink-0 ml-2">
                             <i class="fa-solid fa-location-dot"></i> 地圖
                         </a>
                     </label>
@@ -700,7 +718,27 @@
             document.getElementById('resultContainer').classList.remove('hidden');
         }
 
-        // 🧠 順路最佳化與「動態時間軸推算」
+        // 智慧時段權重偵測（自動識別夕陽與夜市景點，給予不合理時段懲罰值）
+        function getTimeSlotPenalty(spot, currentHour) {
+            const text = (spot.name + spot.desc + spot.score).toLowerCase();
+            
+            // 夜市類景點：下午 5 點前排到會大幅扣分（等效增加 45 公里距離）
+            if (text.includes('夜市')) {
+                return currentHour < 17 ? 45 : -5;
+            }
+            // 夕陽/海邊散步景點：傍晚 15:30 ~ 18:30 黃金時段加分，大早上扣分
+            if (text.includes('夕陽') || text.includes('高美濕地') || text.includes('漁光島')) {
+                if (currentHour >= 15.5 && currentHour <= 18.5) return -6;
+                if (currentHour < 14) return 20;
+            }
+            // 咖啡廳：下午茶時段 (13:30 ~ 17:00) 微幅加分
+            if (spot.tags.includes('coffee') && currentHour >= 13.5 && currentHour <= 17) {
+                return -2;
+            }
+            return 0;
+        }
+
+        // 升級版：起點樞紐 + 距離與時段雙權重 + 動態交通時間推算
         function optimizeSelectedRoute() {
             const checkedBoxes = document.querySelectorAll('.spot-checkbox:checked');
             if (checkedBoxes.length === 0) {
@@ -710,50 +748,80 @@
 
             const selectedIds = Array.from(checkedBoxes).map(cb => cb.value);
             let unvisited = currentDisplayedCandidateSpots.filter(s => selectedIds.includes(s.id));
-
             if (unvisited.length === 0) return;
 
+            const city = document.getElementById('citySelect').value;
+            const startTimeVal = document.getElementById('startTimeInput')?.value || '10:00';
+            const transportMode = document.getElementById('transportModeSelect')?.value || 'car';
+
+            const [startH, startM] = startTimeVal.split(':').map(Number);
+            let totalMinutes = startH * 60 + startM;
+
+            // 以該縣市火車站作為「虛擬起點」挑選最適合的第一站
+            let currentPos = cityStartHubs[city] || { lat: unvisited[0].lat, lon: unvisited[0].lon };
             currentOptimizedRoute = [];
-            let currentSpot = unvisited.shift();
-            currentOptimizedRoute.push(currentSpot);
 
             while (unvisited.length > 0) {
-                let nearestIdx = 0;
-                let minDistance = Infinity;
+                const currentHour = totalMinutes / 60;
+                let bestIdx = 0;
+                let lowestCost = Infinity;
+                let bestRealDist = 0;
 
                 for (let i = 0; i < unvisited.length; i++) {
-                    const dist = calculateDistance(currentSpot.lat, currentSpot.lon, unvisited[i].lat, unvisited[i].lon);
-                    if (dist < minDistance) {
-                        minDistance = dist;
-                        nearestIdx = i;
+                    const straightDist = calculateDistance(currentPos.lat, currentPos.lon, unvisited[i].lat, unvisited[i].lon);
+                    const penalty = getTimeSlotPenalty(unvisited[i], currentHour);
+                    const totalCost = straightDist + penalty;
+
+                    if (totalCost < lowestCost) {
+                        lowestCost = totalCost;
+                        bestIdx = i;
+                        bestRealDist = straightDist * 1.3; // 道路曲折係數 1.3
                     }
                 }
 
-                currentSpot = unvisited.splice(nearestIdx, 1)[0];
-                currentOptimizedRoute.push(currentSpot);
+                const nextSpot = unvisited.splice(bestIdx, 1)[0];
+
+                // 動態計算交通移動時間（分鐘）
+                let travelMins = 0;
+                if (transportMode === 'car') {
+                    // 開車/騎車：均速 30km/h + 停車緩衝
+                    travelMins = Math.round((bestRealDist / 30) * 60) + (currentOptimizedRoute.length === 0 ? 5 : 10);
+                } else {
+                    // 大眾運輸：均速 18km/h + 等車步行緩衝 15 分鐘
+                    travelMins = Math.round((bestRealDist / 18) * 60) + 15;
+                }
+                // 以 5 分鐘為單位無條件進位，時間軸更整齊
+                travelMins = Math.max(5, Math.ceil(travelMins / 5) * 5);
+
+                if (currentOptimizedRoute.length > 0) {
+                    totalMinutes += travelMins;
+                }
+
+                const arriveTime = formatMinsToHHMM(totalMinutes);
+                const stayMins = Math.round((nextSpot.durationHours || 1.5) * 60);
+                totalMinutes += stayMins;
+                const leaveTime = formatMinsToHHMM(totalMinutes);
+
+                currentOptimizedRoute.push({
+                    ...nextSpot,
+                    time: `${arriveTime} - ${leaveTime}`,
+                    arriveTime: arriveTime,
+                    leaveTime: leaveTime,
+                    travelMinsFromPrev: currentOptimizedRoute.length === 0 ? 0 : travelMins,
+                    distFromPrev: bestRealDist.toFixed(1),
+                    transportIcon: transportMode === 'car' ? '🚗' : '🚌'
+                });
+
+                currentPos = { lat: nextSpot.lat, lon: nextSpot.lon };
             }
 
-            // 💡 動態時間軸算路：從 10:00 開始推算每個景點的到達時間，避免時間顛倒問題
-            let currentHour = 10;
-            let currentMinute = 0;
-
-            currentOptimizedRoute = currentOptimizedRoute.map((spot, idx) => {
-                const hourStr = String(currentHour).padStart(2, '0');
-                const minStr = String(currentMinute).padStart(2, '0');
-                const calculatedTime = `${hourStr}:${minStr}`;
-
-                // 加上停留時間 + 0.5 小時車程移動時間
-                const stayTime = spot.durationHours || 1.5;
-                const totalOffsetMinutes = Math.round((stayTime + 0.5) * 60);
-
-                currentMinute += totalOffsetMinutes;
-                currentHour += Math.floor(currentMinute / 60);
-                currentMinute = currentMinute % 60;
-
-                return { ...spot, time: calculatedTime };
-            });
-
             renderOptimizedRouteUI();
+        }
+
+        function formatMinsToHHMM(mins) {
+            const h = Math.floor(mins / 60) % 24;
+            const m = mins % 60;
+            return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
         }
 
         function calculateDistance(lat1, lon1, lat2, lon2) {
@@ -771,39 +839,48 @@
             const container = document.getElementById('optimizedStepsContainer');
             container.innerHTML = '';
 
-            let googleMapsQueryNames = [];
+            let googleMapsCoords = [];
 
             currentOptimizedRoute.forEach((spot, idx) => {
-                googleMapsQueryNames.push(encodeURIComponent(spot.name));
+                googleMapsCoords.push(`${spot.lat},${spot.lon}`);
+
+                // 在站點之間插入「交通移動時間」提示條
+                if (idx > 0) {
+                    container.innerHTML += `
+                        <div class="flex items-center gap-2 pl-6 py-0.5 text-xs text-emerald-300/90 font-medium">
+                            <i class="fa-solid fa-arrow-down-long text-amber-400"></i>
+                            <span>${spot.transportIcon} 移動約 ${spot.travelMinsFromPrev} 分鐘 (距離約 ${spot.distFromPrev} km)</span>
+                        </div>
+                    `;
+                }
 
                 let stepBadge = idx === 0 ? '🏁 起點站' : (idx === currentOptimizedRoute.length - 1 ? '🎯 終點站' : `站點 ${idx + 1}`);
                 let badgeColor = idx === 0 ? 'bg-emerald-600 text-white' : (idx === currentOptimizedRoute.length - 1 ? 'bg-amber-500 text-stone-950 font-bold' : 'bg-stone-800 text-amber-200');
 
                 container.innerHTML += `
-                    <div class="bg-stone-800/90 border border-amber-500/20 rounded-xl p-3 flex justify-between items-center">
+                    <div class="bg-stone-800/90 border border-amber-500/20 rounded-xl p-3.5 flex justify-between items-center">
                         <div class="flex items-center gap-3">
                             <span class="${badgeColor} text-xs px-2.5 py-1 rounded-lg font-bold shrink-0">${stepBadge}</span>
                             <div>
-                                <h5 class="font-bold text-white text-sm">
-                                    <span class="text-amber-300 font-mono mr-1 font-extrabold">[${spot.time}]</span> 
-                                    ${spot.name} 
-                                    <span class="text-xs text-amber-200/80 font-normal ml-2">⏱️ 建議停留: ${spot.duration}</span>
+                                <h5 class="font-bold text-white text-sm flex flex-wrap items-center gap-1.5">
+                                    <span class="text-amber-300 font-mono font-extrabold bg-stone-950/60 px-2 py-0.5 rounded">[${spot.time}]</span> 
+                                    <span>${spot.name}</span>
+                                    <span class="text-xs text-amber-200/80 font-normal">⏱️ 停留 ${spot.duration}</span>
                                 </h5>
-                                <p class="text-xs text-amber-200/70">${spot.desc}</p>
+                                <p class="text-xs text-amber-200/70 mt-1">${spot.desc}</p>
                             </div>
                         </div>
-                        ${idx < currentOptimizedRoute.length - 1 ? '<i class="fa-solid fa-arrow-down-long text-amber-400 text-sm pr-2"></i>' : ''}
                     </div>
                 `;
             });
 
-            const mapsUrl = `https://www.google.com/maps/dir/${googleMapsQueryNames.join('/')}`;
+            const mapsUrl = `https://www.google.com/maps/dir/${googleMapsCoords.join('/')}`;
             document.getElementById('googleMapsMultiRouteBtn').href = mapsUrl;
 
             document.getElementById('optimizedRoutePanel').classList.remove('hidden');
         }
 
-        // 🎨 渲染【旗艦級寫實繪本滿版旅遊海報】
+        // 渲染【旗艦級寫實繪本滿版旅遊海報】
         function renderPosterVisualCard() {
             const city = document.getElementById('citySelect').value;
             const dateVal = document.getElementById('travelDate').value;
@@ -839,6 +916,7 @@
                         <div class="p-3 bg-white space-y-1">
                             <div class="flex justify-between items-center text-[10px] text-amber-900 font-bold border-b border-stone-100 pb-1">
                                 <span>⏱️ 建議停留時間：${spot.duration}</span>
+                                ${idx > 0 && spot.travelMinsFromPrev ? `<span>${spot.transportIcon} 車程約 ${spot.travelMinsFromPrev} 分鐘</span>` : ''}
                             </div>
                             <p class="text-[11px] text-stone-600 leading-relaxed pt-0.5">${spot.desc}</p>
                         </div>
@@ -874,13 +952,14 @@
         function copyLineText() {
             const dateVal = document.getElementById('travelDate').value;
             const displayList = currentOptimizedRoute.length > 0 ? currentOptimizedRoute : currentDisplayedCandidateSpots.slice(0, 3);
-            const routeText = displayList.map((s, i) => `${s.time || '10:00'} ${s.name} (建議停留${s.duration})`).join(' ➔ ');
-            const text = `【Bonnie排程旅遊agent - 行程懶人包】\n📅 出遊日期：${dateVal}\n📍 順路路線：${routeText}\n🌤️ 天氣預報：${document.getElementById('weatherDesc').innerText}\n💡 隨身裝備：${document.getElementById('packingTips').innerText}\n祝大家順暢玩得開心！`;
+            const routeText = displayList.map((s, i) => `${s.time || '10:00'} ${s.name} (建議停留${s.duration})`).join('\n ➔ ');
+            const mapsUrl = document.getElementById('googleMapsMultiRouteBtn').href;
+            const text = `【Bonnie排程旅遊agent - 行程懶人包】\n📅 出遊日期：${dateVal}\n📍 順路路線：\n${routeText}\n🌤️ 天氣預報：${document.getElementById('weatherDesc').innerText}\n💡 隨身裝備：${document.getElementById('packingTips').innerText}\n🗺️ 多點一鍵導航：${mapsUrl}\n祝大家順暢玩得開心！`;
             navigator.clipboard.writeText(text);
-            alert('已成功複製 LINE 旅遊懶人包文字！');
+            alert('已成功複製 LINE 旅遊懶人包文字（含 Google Maps 導航連結）！');
         }
 
-        // 📊 全量數據統計動態算演算法
+        // 全量數據統計動態算演算法
         function renderAnalyticsCharts() {
             const logs = JSON.parse(localStorage.getItem('smartvibe_logs') || '[]');
             const tbody = document.getElementById('analyticsTableBody');
@@ -896,7 +975,6 @@
                 </tr>
             `).join('') || '<tr><td colspan="4" class="p-2 text-center text-stone-400">目前尚無數據紀錄</td></tr>';
 
-            // 全量統計年齡層數量
             let ageCounts = { '18-24': 0, '25-34': 0, '35-49': 0, '50+': 0 };
             let styleCounts = { 'nature': 0, 'urban': 0 };
 
@@ -909,12 +987,10 @@
                     else styleCounts['nature']++;
                 });
             } else {
-                // 若完全無資料，提供模擬預設基準
                 ageCounts = { '18-24': 35, '25-34': 45, '35-49': 12, '50+': 8 };
                 styleCounts = { 'nature': 52, 'urban': 48 };
             }
 
-            // 銷毀舊圖表實體避免重疊 render
             if (ageChartInstance) ageChartInstance.destroy();
             if (styleChartInstance) styleChartInstance.destroy();
 
@@ -937,95 +1013,92 @@
             });
         }
 
-        // 📈 基於全量資料 (Full Dataset) 計算並生成商業策略報告
-        // 📈 基於全量資料 (Full Dataset) 計算並生成商業策略報告（修復 0% 主力問題）
-function generateReport() {
-    const logs = JSON.parse(localStorage.getItem('smartvibe_logs') || '[]');
-    const total = logs.length;
+        // 基於全量資料計算並生成商業策略報告
+        function generateReport() {
+            const logs = JSON.parse(localStorage.getItem('smartvibe_logs') || '[]');
+            const total = logs.length;
 
-    let ageCounts = { '18-24': 0, '25-34': 0, '35-49': 0, '50+': 0 };
-    let styleCounts = { 'nature': 0, 'urban': 0 };
+            let ageCounts = { '18-24': 0, '25-34': 0, '35-49': 0, '50+': 0 };
+            let styleCounts = { 'nature': 0, 'urban': 0 };
 
-    if (total > 0) {
-        logs.forEach(l => {
-            if (ageCounts[l.age] !== undefined) ageCounts[l.age]++;
-            if (l.style === 'urban') styleCounts['urban']++;
-            else styleCounts['nature']++;
-        });
-    } else {
-        ageCounts = { '18-24': 35, '25-34': 45, '35-49': 12, '50+': 8 };
-        styleCounts = { 'nature': 52, 'urban': 48 };
-    }
+            if (total > 0) {
+                logs.forEach(l => {
+                    if (ageCounts[l.age] !== undefined) ageCounts[l.age]++;
+                    if (l.style === 'urban') styleCounts['urban']++;
+                    else styleCounts['nature']++;
+                });
+            } else {
+                ageCounts = { '18-24': 35, '25-34': 45, '35-49': 12, '50+': 8 };
+                styleCounts = { 'nature': 52, 'urban': 48 };
+            }
 
-    const baseTotal = total > 0 ? total : 100;
+            const baseTotal = total > 0 ? total : 100;
 
-    // 1. 動態計算每個年齡層的百分比，並排序找出真正的主力客群
-    const ageLabelsMap = {
-        '18-24': '18-24歲',
-        '25-34': '25-34歲',
-        '35-49': '35-49歲',
-        '50+': '50歲以上'
-    };
+            const ageLabelsMap = {
+                '18-24': '18-24歲',
+                '25-34': '25-34歲',
+                '35-49': '35-49歲',
+                '50+': '50歲以上'
+            };
 
-    const sortedAges = Object.keys(ageCounts)
-        .map(key => ({
-            key: key,
-            label: ageLabelsMap[key],
-            count: ageCounts[key],
-            pct: Math.round((ageCounts[key] / baseTotal) * 100)
-        }))
-        .filter(item => item.pct > 0) // 💡 自動過濾掉 0% 的族群
-        .sort((a, b) => b.pct - a.pct); // 依百分比高到低排序
+            const sortedAges = Object.keys(ageCounts)
+                .map(key => ({
+                    key: key,
+                    label: ageLabelsMap[key],
+                    count: ageCounts[key],
+                    pct: Math.round((ageCounts[key] / baseTotal) * 100)
+                }))
+                .filter(item => item.pct > 0)
+                .sort((a, b) => b.pct - a.pct);
 
-    // 2. 組成自然的人性化描述文字
-    let ageSummaryText = '';
-    if (sortedAges.length === 1) {
-        ageSummaryText = `主力客群高度集中於 <strong>${sortedAges[0].label} (佔 ${sortedAges[0].pct}%)</strong>`;
-    } else if (sortedAges.length >= 2) {
-        ageSummaryText = `主力客群為 <strong>${sortedAges[0].label} (佔 ${sortedAges[0].pct}%)</strong> 與 <strong>${sortedAges[1].label} (佔 ${sortedAges[1].pct}%)</strong>`;
-    } else {
-        ageSummaryText = `目前尚未採集到足夠的年齡層資料`;
-    }
+            let ageSummaryText = '';
+            if (sortedAges.length === 1) {
+                ageSummaryText = `主力客群高度集中於 <strong>${sortedAges[0].label} (佔 ${sortedAges[0].pct}%)</strong>`;
+            } else if (sortedAges.length >= 2) {
+                ageSummaryText = `主力客群為 <strong>${sortedAges[0].label} (佔 ${sortedAges[0].pct}%)</strong> 與 <strong>${sortedAges[1].label} (佔 ${sortedAges[1].pct}%)</strong>`;
+            } else {
+                ageSummaryText = `目前尚未採集到足夠的年齡層資料`;
+            }
 
-    const urbanPct = Math.round((styleCounts['urban'] / baseTotal) * 100);
-    const naturePct = Math.round((styleCounts['nature'] / baseTotal) * 100);
+            const urbanPct = Math.round((styleCounts['urban'] / baseTotal) * 100);
+            const naturePct = Math.round((styleCounts['nature'] / baseTotal) * 100);
 
-    const reportHtml = `
-        <div class="bg-amber-50 p-4 rounded-2xl border border-amber-200">
-            <h4 class="font-bold text-amber-950 text-sm mb-1.5 flex items-center gap-1.5">
-                <i class="fa-solid fa-chart-pie text-amber-800"></i> 1. 全量數據摘要與精準客群輪廓 (共 ${total > 0 ? total : '模擬 100'} 筆資料)
-            </h4>
-            <p class="text-stone-700 leading-relaxed">
-                經由對歷史累積的所有使用者問卷進行動態演算，${ageSummaryText}。
-                風格喜好方面，<strong>都市咖啡廳與手作 DIY 佔 ${urbanPct}%</strong>，而 <strong>大自然戶外景點佔 ${naturePct}%</strong>。
-            </p>
-        </div>
+            const reportHtml = `
+                <div class="bg-amber-50 p-4 rounded-2xl border border-amber-200">
+                    <h4 class="font-bold text-amber-950 text-sm mb-1.5 flex items-center gap-1.5">
+                        <i class="fa-solid fa-chart-pie text-amber-800"></i> 1. 全量數據摘要與精準客群輪廓 (共 ${total > 0 ? total : '模擬 100'} 筆資料)
+                    </h4>
+                    <p class="text-stone-700 leading-relaxed">
+                        經由對歷史累積的所有使用者問卷進行動態演算，${ageSummaryText}。
+                        風格喜好方面，<strong>都市咖啡廳與手作 DIY 佔 ${urbanPct}%</strong>，而 <strong>大自然戶外景點佔 ${naturePct}%</strong>。
+                    </p>
+                </div>
 
-        <div class="bg-emerald-50 p-4 rounded-2xl border border-emerald-200">
-            <h4 class="font-bold text-emerald-950 text-sm mb-1.5 flex items-center gap-1.5">
-                <i class="fa-solid fa-bullhorn text-emerald-800"></i> 2. 基於全量比例的行銷與社群投放建議
-            </h4>
-            <ul class="list-disc list-inside space-y-1.5 text-stone-700">
-                <li><strong>精準受眾投放 (Ad Targeting)</strong>：建議廣告預算優先集中於 ${sortedAges.length > 0 ? sortedAges[0].label : '青年'} 族群，設定興趣為「文青手作、獨立咖啡廳、週末小旅行」。</li>
-                <li><strong>行銷企劃主軸</strong>：${urbanPct >= naturePct ? '目前數據顯示都市與手作派佔優勢，行銷素材應多強調「雨天備案、室內燙布貼手作、質感巷弄咖啡店」！' : '大自然派略佔優勢，建議行銷重點主打「秘境散步、海岸夕陽、不繞路一日遊」。'}</li>
-                <li><strong>社群裂變傳播</strong>：繼續優化「日系寫實滿版海報」的排版美感，鎖定核心族群在 IG Story 的自發分享習慣。</li>
-            </ul>
-        </div>
+                <div class="bg-emerald-50 p-4 rounded-2xl border border-emerald-200">
+                    <h4 class="font-bold text-emerald-950 text-sm mb-1.5 flex items-center gap-1.5">
+                        <i class="fa-solid fa-bullhorn text-emerald-800"></i> 2. 基於全量比例的行銷與社群投放建議
+                    </h4>
+                    <ul class="list-disc list-inside space-y-1.5 text-stone-700">
+                        <li><strong>精準受眾投放 (Ad Targeting)</strong>：建議廣告預算優先集中於 ${sortedAges.length > 0 ? sortedAges[0].label : '青年'} 族群，設定興趣為「文青手作、獨立咖啡廳、週末小旅行」。</li>
+                        <li><strong>行銷企劃主軸</strong>：${urbanPct >= naturePct ? '目前數據顯示都市與手作派佔優勢，行銷素材應多強調「雨天備案、室內燙布貼手作、質感巷弄咖啡店」！' : '大自然派略佔優勢，建議行銷重點主打「秘境散步、海岸夕陽、不繞路一日遊」。'}</li>
+                        <li><strong>社群裂變傳播</strong>：繼續優化「日系寫實滿版海報」的排版美感，鎖定核心族群在 IG Story 的自發分享習慣。</li>
+                    </ul>
+                </div>
 
-        <div class="bg-sky-50 p-4 rounded-2xl border border-sky-200">
-            <h4 class="font-bold text-sky-950 text-sm mb-1.5 flex items-center gap-1.5">
-                <i class="fa-solid fa-handshake text-sky-800"></i> 3. 商業合作與變現（BD & Monetization）
-            </h4>
-            <ul class="list-disc list-inside space-y-1.5 text-stone-700">
-                <li><strong>商家贊助與置頂廣告</strong>：向在地手作體驗工作室與質感咖啡廳展示此份 ${total} 筆全量數據，證明平台能精準帶來目標客源。</li>
-                <li><strong>體驗票券抽成分潤</strong>：於行程導航頁直接嵌入手作門票與景點體驗預訂按鈕，建立穩定佣金收入模型。</li>
-            </ul>
-        </div>
-    `;
+                <div class="bg-sky-50 p-4 rounded-2xl border border-sky-200">
+                    <h4 class="font-bold text-sky-950 text-sm mb-1.5 flex items-center gap-1.5">
+                        <i class="fa-solid fa-handshake text-sky-800"></i> 3. 商業合作與變現（BD & Monetization）
+                    </h4>
+                    <ul class="list-disc list-inside space-y-1.5 text-stone-700">
+                        <li><strong>商家贊助與置頂廣告</strong>：向在地手作體驗工作室與質感咖啡廳展示此份 ${total} 筆全量數據，證明平台能精準帶來目標客源。</li>
+                        <li><strong>體驗票券抽成分潤</strong>：於行程導航頁直接嵌入手作門票與景點體驗預訂按鈕，建立穩定佣金收入模型。</li>
+                    </ul>
+                </div>
+            `;
 
-    document.getElementById('reportContent').innerHTML = reportHtml;
-    document.getElementById('reportModal').classList.remove('hidden');
-}
+            document.getElementById('reportContent').innerHTML = reportHtml;
+            document.getElementById('reportModal').classList.remove('hidden');
+        }
     </script>
 </body>
 </html>
