@@ -138,7 +138,6 @@
             <button onclick="generatePlan()" class="w-full bg-gradient-to-r from-amber-900 to-emerald-800 hover:from-amber-950 hover:to-emerald-900 text-white font-bold py-3.5 rounded-xl shadow-md transition flex items-center justify-center gap-2">
                 <i class="fa-solid fa-magnifying-glass"></i> 搜尋並匹配專屬景點
             </button>
-            <!-- 放在原本 generatePlan() 按鈕下方 -->
             <button onclick="discoverNewSpotsFromAnalytics()" id="aiDiscoverBtn" class="w-full mt-2.5 bg-stone-800 hover:bg-stone-900 text-amber-200 border border-amber-600/50 font-bold py-2.5 rounded-xl text-xs shadow transition flex items-center justify-center gap-2">
                 <i class="fa-solid fa-robot text-amber-400"></i> 依後台數據趨勢，自動從地圖 API 挖掘 3 個真實新景點
             </button>
@@ -199,9 +198,14 @@
                             <p class="text-xs text-emerald-300 font-medium mt-0.5" id="routeSummaryStats">計算行程總時數中...</p>
                         </div>
                     </div>
-                    <button onclick="openShareModal()" class="bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold text-xs px-3.5 py-2 rounded-xl shadow transition flex items-center gap-1 shrink-0">
-                        <i class="fa-solid fa-palette"></i> 開啟高畫質旅遊海報
-                    </button>
+                    <div class="flex flex-wrap gap-2 shrink-0">
+                        <button onclick="copyShareUrl()" class="bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs px-3.5 py-2 rounded-xl shadow transition flex items-center gap-1">
+                            <i class="fa-solid fa-link"></i> 複製行程分享連結
+                        </button>
+                        <button onclick="openShareModal()" class="bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold text-xs px-3.5 py-2 rounded-xl shadow transition flex items-center gap-1">
+                            <i class="fa-solid fa-palette"></i> 開啟高畫質旅遊海報
+                        </button>
+                    </div>
                 </div>
 
                 <!-- 行程過晚防呆提示條 -->
@@ -231,7 +235,7 @@
 
     </main>
 
-    <!-- Modal 1: 使用者問卷 Modal（預設 hidden，僅首次造訪無紀錄時自動顯示） -->
+    <!-- Modal 1: 使用者問卷 Modal -->
     <div id="surveyModal" class="fixed inset-0 bg-stone-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl relative border-2 border-amber-800">
             <div class="text-center mb-5">
@@ -458,42 +462,50 @@
             '台北': { lat: 25.0478, lon: 121.5170 }  // 台北車站
         };
 
-        // 專屬景點資料庫
+        // 專屬景點資料庫（含真實公休日 closedDays 設定）
         const mockDatabase = {
             '台南': [
-                { id: 'tn1', name: '布布刺刺韓式燙布貼 (DIY 手作)', lat: 22.9930, lon: 120.2010, tags: ['diy', 'indoor', 'urban'], desc: '體驗最道地的韓式手作燙布貼，自由混搭獨一無二的帆布包與客製配件。', duration: '1.5 - 2 小時', durationHours: 1.5, score: '🎨 熱門 DIY' },
-                { id: 'tn2', name: '杏源珈琲 Sing yuan coffee', lat: 22.9985, lon: 120.2088, tags: ['coffee', 'indoor', 'urban'], desc: '台南巷弄老宅質感咖啡廳，以特調義式與極致手沖甜點聞名，氛圍優雅。', duration: '1 - 1.5 小時', durationHours: 1.0, score: '☕ 質感咖啡' },
-                { id: 'tn3', name: '神農街 (古厝逛街服飾)', lat: 22.9975, lon: 120.1965, tags: ['shopping', 'outdoor', 'urban'], desc: '保留清代文創老厝巷弄，聚集手繪燈籠、獨立設計服飾與古物小店。', duration: '2 小時', durationHours: 2.0, score: '🛍️ 復古逛街' },
-                { id: 'tn4', name: '十鼓仁糖文創園區', lat: 22.9385, lon: 120.2305, tags: ['amusement', 'family', 'indoor', 'outdoor'], desc: '舊糖廠改造的魔幻主題樂園，提供極限滑梯、擊鼓實境秀與夜間燈光秀。', duration: '3 - 4 小時', durationHours: 3.0, score: '🎡 鼓樂樂園' },
-                { id: 'tn5', name: '漁光島 (海邊散步)', lat: 22.9811, lon: 120.1542, tags: ['sea', 'outdoor', 'nature'], desc: '台南最美新月形沙灘，穿越防風林漫步海岸，欣賞絕美夕陽落日。', duration: '1.5 小時', durationHours: 1.5, score: '🌊 海岸夕陽' },
-                { id: 'tn6', name: '奇美博物館 (園區與展覽)', lat: 22.9348, lon: 120.2260, tags: ['family', 'indoor'], desc: '西洋藝術展與千坪西洋宮廷園區，長輩親子皆宜。', duration: '2.5 小時', durationHours: 2.5, score: '🏛️ 藝術宮廷' }
+                { id: 'tn1', name: '布布刺刺韓式燙布貼 (DIY 手作)', lat: 22.9930, lon: 120.2010, closedDays: [2], tags: ['diy', 'indoor', 'urban'], desc: '體驗最道地的韓式手作燙布貼，自由混搭獨一無二的帆布包與客製配件。', duration: '1.5 - 2 小時', durationHours: 1.5, score: '🎨 熱門 DIY' },
+                { id: 'tn2', name: '杏源珈琲 Sing yuan coffee', lat: 22.9985, lon: 120.2088, closedDays: [3], tags: ['coffee', 'indoor', 'urban'], desc: '台南巷弄老宅質感咖啡廳，以特調義式與極致手沖甜點聞名，氛圍優雅。', duration: '1 - 1.5 小時', durationHours: 1.0, score: '☕ 質感咖啡' },
+                { id: 'tn3', name: '神農街 (古厝逛街服飾)', lat: 22.9975, lon: 120.1965, closedDays: [], tags: ['shopping', 'outdoor', 'urban'], desc: '保留清代文創老厝巷弄，聚集手繪燈籠、獨立設計服飾與古物小店。', duration: '2 小時', durationHours: 2.0, score: '🛍️ 復古逛街' },
+                { id: 'tn4', name: '十鼓仁糖文創園區', lat: 22.9385, lon: 120.2305, closedDays: [], tags: ['amusement', 'family', 'indoor', 'outdoor'], desc: '舊糖廠改造的魔幻主題樂園，提供極限滑梯、擊鼓實境秀與夜間燈光秀。', duration: '3 - 4 小時', durationHours: 3.0, score: '🎡 鼓樂樂園' },
+                { id: 'tn5', name: '漁光島 (海邊散步)', lat: 22.9811, lon: 120.1542, closedDays: [], tags: ['sea', 'outdoor', 'nature'], desc: '台南最美新月形沙灘，穿越防風林漫步海岸，欣賞絕美夕陽落日。', duration: '1.5 小時', durationHours: 1.5, score: '🌊 海岸夕陽' },
+                { id: 'tn6', name: '奇美博物館 (園區與展覽)', lat: 22.9348, lon: 120.2260, closedDays: [3], tags: ['family', 'indoor'], desc: '西洋藝術展與千坪西洋宮廷園區，長輩親子皆宜（週三固定休館）。', duration: '2.5 小時', durationHours: 2.5, score: '🏛️ 藝術宮廷' }
             ],
             '台中': [
-                { id: 'tc1', name: 'CLAYWAY 銀黏土製作所 (DIY 手作)', lat: 24.1528, lon: 120.6635, tags: ['diy', 'indoor', 'urban'], desc: '親手打磨屬於自己的純銀戒指與項鍊手作體驗，質感滿分。', duration: '2 小時', durationHours: 2.0, score: '🎨 銀飾手作' },
-                { id: 'tc2', name: '十三咖啡', lat: 24.1188, lon: 120.6380, tags: ['coffee', 'indoor', 'nature'], desc: '隱身楓樹社區的神秘木造咖啡館，無菜單手沖，享受寧靜柴燒咖啡香。', duration: '1.5 小時', durationHours: 1.5, score: '☕ 隱藏咖啡' },
-                { id: 'tc3', name: '勤美草悟道、審計新村周邊', lat: 24.1502, lon: 120.6630, tags: ['shopping', 'urban', 'outdoor'], desc: '文創市集、潮流服飾店與老屋改造聚落，台中最 Chill 逛街綠帶。', duration: '2 - 3 小時', durationHours: 2.0, score: '🛍️ 文創逛街' },
-                { id: 'tc4', name: '大坑步道 (山邊散步)', lat: 24.1812, lon: 120.7320, tags: ['mountain', 'outdoor', 'nature'], desc: '著名的相思木棧道，漫步於台中後山森林綠意中，遠眺全市景致。', duration: '2 小時', durationHours: 2.0, score: '⛰️ 森林步道' },
-                { id: 'tc5', name: '高美濕地 (海邊散步)', lat: 24.3121, lon: 120.5498, tags: ['sea', 'outdoor', 'nature'], desc: '木棧道伸入濕地心臟，欣賞絕美風車景觀與海岸夕陽赤腳漫步。', duration: '1.5 - 2 小時', durationHours: 1.5, score: '🌊 海岸夕陽' },
-                { id: 'tc6', name: '逢甲夜市商圈', lat: 24.1788, lon: 120.6467, tags: ['shopping', 'outdoor'], desc: '全台指標性美食夜市，各種潮流服飾與排隊小吃。', duration: '2 小時', durationHours: 2.0, score: '🌙 熱門夜市' },
-                { id: 'tc7', name: '麗寶樂園 / 探索世界', lat: 24.3233, lon: 120.6970, tags: ['amusement', 'family'], desc: '大型主題遊樂園與摩天輪，親子衝一波首選。', duration: '4 小時', durationHours: 4.0, score: '🎡 主題樂園' }
+                { id: 'tc1', name: 'CLAYWAY 銀黏土製作所 (DIY 手作)', lat: 24.1528, lon: 120.6635, closedDays: [2], tags: ['diy', 'indoor', 'urban'], desc: '親手打磨屬於自己的純銀戒指與項鍊手作體驗，質感滿分。', duration: '2 小時', durationHours: 2.0, score: '🎨 銀飾手作' },
+                { id: 'tc2', name: '十三咖啡', lat: 24.1188, lon: 120.6380, closedDays: [1, 2], tags: ['coffee', 'indoor', 'nature'], desc: '隱身楓樹社區的神秘木造咖啡館，無菜單手沖，享受寧靜柴燒咖啡香。', duration: '1.5 小時', durationHours: 1.5, score: '☕ 隱藏咖啡' },
+                { id: 'tc3', name: '勤美草悟道、審計新村周邊', lat: 24.1502, lon: 120.6630, closedDays: [], tags: ['shopping', 'urban', 'outdoor'], desc: '文創市集、潮流服飾店與老屋改造聚落，台中最 Chill 逛街綠帶。', duration: '2 - 3 小時', durationHours: 2.0, score: '🛍️ 文創逛街' },
+                { id: 'tc4', name: '大坑步道 (山邊散步)', lat: 24.1812, lon: 120.7320, closedDays: [], tags: ['mountain', 'outdoor', 'nature'], desc: '著名的相思木棧道，漫步於台中後山森林綠意中，遠眺全市景致。', duration: '2 小時', durationHours: 2.0, score: '⛰️ 森林步道' },
+                { id: 'tc5', name: '高美濕地 (海邊散步)', lat: 24.3121, lon: 120.5498, closedDays: [], tags: ['sea', 'outdoor', 'nature'], desc: '木棧道伸入濕地心臟，欣賞絕美風車景觀與海岸夕陽赤腳漫步。', duration: '1.5 - 2 小時', durationHours: 1.5, score: '🌊 海岸夕陽' },
+                { id: 'tc6', name: '逢甲夜市商圈', lat: 24.1788, lon: 120.6467, closedDays: [], tags: ['shopping', 'outdoor'], desc: '全台指標性美食夜市，各種潮流服飾與排隊小吃。', duration: '2 小時', durationHours: 2.0, score: '🌙 熱門夜市' },
+                { id: 'tc7', name: '麗寶樂園 / 探索世界', lat: 24.3233, lon: 120.6970, closedDays: [], tags: ['amusement', 'family'], desc: '大型主題遊樂園與摩天輪，親子衝一波首選。', duration: '4 小時', durationHours: 4.0, score: '🎡 主題樂園' }
             ],
             '花蓮': [
-                { id: 'hl1', name: '鍾華玉品藝術工坊 (DIY 手作)', lat: 23.9712, lon: 121.5890, tags: ['diy', 'indoor'], desc: '體驗花蓮在地玉石打磨與琢玉體驗，將花蓮好石帶回家典藏。', duration: '1.5 小時', durationHours: 1.5, score: '🎨 玉石手作' },
-                { id: 'hl2', name: '波提娜麗精品咖啡', lat: 23.9780, lon: 121.6050, tags: ['coffee', 'indoor'], desc: '花蓮溫馨精緻手沖咖啡館，享受優雅咖啡香氣與純手工甜點。', duration: '1 - 1.5 小時', durationHours: 1.0, score: '☕ 精品手沖' },
-                { id: 'hl3', name: '花蓮舊鐵道文化園區、中山路周邊', lat: 23.9750, lon: 121.6080, tags: ['shopping', 'urban', 'outdoor'], desc: '舊鐵道改造的行人徒步文創商圈，聚集獨立服飾店與手作選物。', duration: '2 小時', durationHours: 2.0, score: '🛍️ 鐵道逛街' },
-                { id: 'hl4', name: '遠雄海洋公園', lat: 23.9020, lon: 121.6050, tags: ['amusement', 'family', 'sea', 'outdoor'], desc: '全台唯一依山傍海的海洋樂園，海豚海獅秀與纜車高空觀海。', duration: '4 - 5 小時', durationHours: 4.0, score: '🐬 海洋樂園' },
-                { id: 'hl5', name: '七星潭 (海邊散步)', lat: 24.0270, lon: 121.6280, tags: ['sea', 'outdoor', 'nature'], desc: '圓潤礫石打造的新月形海灣，聽浪濤聲、踏浪疊石的必訪秘境。', duration: '1.5 小時', durationHours: 1.5, score: '🌊 礫石海灣' },
-                { id: 'hl6', name: '鯉魚潭 (湖畔散步/踩船)', lat: 23.9280, lon: 121.5050, tags: ['mountain', 'sea', 'outdoor'], desc: '花蓮最大的內陸湖泊，湖光山色間騎單車或踩天鵝船漫步。', duration: '2 小時', durationHours: 2.0, score: '🛶 湖光山色' }
+                { id: 'hl1', name: '鍾華玉品藝術工坊 (DIY 手作)', lat: 23.9712, lon: 121.5890, closedDays: [0], tags: ['diy', 'indoor'], desc: '體驗花蓮在地玉石打磨與琢玉體驗，將花蓮好石帶回家典藏。', duration: '1.5 小時', durationHours: 1.5, score: '🎨 玉石手作' },
+                { id: 'hl2', name: '波提娜麗精品咖啡', lat: 23.9780, lon: 121.6050, closedDays: [3], tags: ['coffee', 'indoor'], desc: '花蓮溫馨精緻手沖咖啡館，享受優雅咖啡香氣與純手工甜點。', duration: '1 - 1.5 小時', durationHours: 1.0, score: '☕ 精品手沖' },
+                { id: 'hl3', name: '花蓮舊鐵道文化園區、中山路周邊', lat: 23.9750, lon: 121.6080, closedDays: [], tags: ['shopping', 'urban', 'outdoor'], desc: '舊鐵道改造的行人徒步文創商圈，聚集獨立服飾店與手作選物。', duration: '2 小時', durationHours: 2.0, score: '🛍️ 鐵道逛街' },
+                { id: 'hl4', name: '遠雄海洋公園', lat: 23.9020, lon: 121.6050, closedDays: [], tags: ['amusement', 'family', 'sea', 'outdoor'], desc: '全台唯一依山傍海的海洋樂園，海豚海獅秀與纜車高空觀海。', duration: '4 - 5 小時', durationHours: 4.0, score: '🐬 海洋樂園' },
+                { id: 'hl5', name: '七星潭 (海邊散步)', lat: 24.0270, lon: 121.6280, closedDays: [], tags: ['sea', 'outdoor', 'nature'], desc: '圓潤礫石打造的新月形海灣，聽浪濤聲、踏浪疊石的必訪秘境。', duration: '1.5 小時', durationHours: 1.5, score: '🌊 礫石海灣' },
+                { id: 'hl6', name: '鯉魚潭 (湖畔散步/踩船)', lat: 23.9280, lon: 121.5050, closedDays: [], tags: ['mountain', 'sea', 'outdoor'], desc: '花蓮最大的內陸湖泊，湖光山色間騎單車或踩天鵝船漫步。', duration: '2 小時', durationHours: 2.0, score: '🛶 湖光山色' }
             ],
             '台北': [
-                { id: 'tp1', name: 'PICK&COLLECT 手作體驗', lat: 25.0545, lon: 121.5215, tags: ['diy', 'indoor', 'urban'], desc: '中山商圈超人氣金工與皮革手作體驗，親手打造專屬飾品配件。', duration: '2 小時', durationHours: 2.0, score: '🎨 金工手作' },
-                { id: 'tp2', name: '中山站、赤峰街巷弄咖啡', lat: 25.0558, lon: 121.5208, tags: ['coffee', 'indoor', 'urban'], desc: '台北最密集的文青咖啡巷，老宅改建的手沖咖啡與精緻戚風蛋糕。', duration: '1.5 小時', durationHours: 1.5, score: '☕ 巷弄咖啡' },
-                { id: 'tp3', name: '赤峰街、中山站周邊 (逛街服飾)', lat: 25.0538, lon: 121.5200, tags: ['shopping', 'urban'], desc: '古著服飾、日系獨立買手店與設計師品牌聚集地，超級好逛。', duration: '2 - 3 小時', durationHours: 2.0, score: '🛍️ 潮流逛街' },
-                { id: 'tp4', name: '象山步道 (山邊散步)', lat: 25.0275, lon: 121.5750, tags: ['mountain', 'outdoor', 'nature'], desc: '幾分鐘攀登即可居高臨下包攬台北 101 全景與北市繁華夜景。', duration: '1.5 - 2 小時', durationHours: 1.5, score: '⛰️ 全景遠眺' },
-                { id: 'tp5', name: '陽明山國家公園 (山邊散步)', lat: 25.1558, lon: 121.5475, tags: ['mountain', 'outdoor', 'nature'], desc: '四季皆美的台北後花園，擎天崗大草原吹風避暑、賞花散步。', duration: '3 小時', durationHours: 3.0, score: '🌲 國家公園' },
-                { id: 'tp6', name: '信義商圈 (百貨逛街)', lat: 25.0358, lon: 121.5654, tags: ['shopping', 'indoor'], desc: '全台最密集百貨大道，名牌與連鎖品牌一次逛足。', duration: '2.5 小時', durationHours: 2.5, score: '🛍️ 百貨大道' }
+                { id: 'tp1', name: 'PICK&COLLECT 手作體驗', lat: 25.0545, lon: 121.5215, closedDays: [1], tags: ['diy', 'indoor', 'urban'], desc: '中山商圈超人氣金工與皮革手作體驗，親手打造專屬飾品配件。', duration: '2 小時', durationHours: 2.0, score: '🎨 金工手作' },
+                { id: 'tp2', name: '中山站、赤峰街巷弄咖啡', lat: 25.0558, lon: 121.5208, closedDays: [], tags: ['coffee', 'indoor', 'urban'], desc: '台北最密集的文青咖啡巷，老宅改建的手沖咖啡與精緻戚風蛋糕。', duration: '1.5 小時', durationHours: 1.5, score: '☕ 巷弄咖啡' },
+                { id: 'tp3', name: '赤峰街、中山站周邊 (逛街服飾)', lat: 25.0538, lon: 121.5200, closedDays: [], tags: ['shopping', 'urban'], desc: '古著服飾、日系獨立買手店與設計師品牌聚集地，超級好逛。', duration: '2 - 3 小時', durationHours: 2.0, score: '🛍️ 潮流逛街' },
+                { id: 'tp4', name: '象山步道 (山邊散步)', lat: 25.0275, lon: 121.5750, closedDays: [], tags: ['mountain', 'outdoor', 'nature'], desc: '幾分鐘攀登即可居高臨下包攬台北 101 全景與北市繁華夜景。', duration: '1.5 - 2 小時', durationHours: 1.5, score: '⛰️ 全景遠眺' },
+                { id: 'tp5', name: '陽明山國家公園 (山邊散步)', lat: 25.1558, lon: 121.5475, closedDays: [], tags: ['mountain', 'outdoor', 'nature'], desc: '四季皆美的台北後花園，擎天崗大草原吹風避暑、賞花散步。', duration: '3 小時', durationHours: 3.0, score: '🌲 國家公園' },
+                { id: 'tp6', name: '信義商圈 (百貨逛街)', lat: 25.0358, lon: 121.5654, closedDays: [], tags: ['shopping', 'indoor'], desc: '全台最密集百貨大道，名牌與連鎖品牌一次逛足。', duration: '2.5 小時', durationHours: 2.5, score: '🛍️ 百貨大道' }
             ]
         };
+
+        // 載入 localStorage 中已由 AI 挖掘的新景點
+        Object.keys(mockDatabase).forEach(cityKey => {
+            const savedNewSpots = JSON.parse(localStorage.getItem(`ai_discovered_spots_${cityKey}`) || '[]');
+            if (savedNewSpots.length > 0) {
+                mockDatabase[cityKey] = [...mockDatabase[cityKey], ...savedNewSpots];
+            }
+        });
 
         window.onload = function() {
             const today = new Date().toISOString().split('T')[0];
@@ -502,16 +514,21 @@
             travelDateInput.min = today;
             travelDateInput.value = today;
 
-            // 檢查 localStorage 是否已有填寫紀錄：有則直接套用，沒有才彈出問卷
+            const isSharedLink = window.location.hash.startsWith('#plan=');
             const savedPersona = localStorage.getItem('smartvibe_persona');
+
             if (savedPersona) {
                 currentUserPersona = JSON.parse(savedPersona);
+                updatePersonaUI();
+            } else if (isSharedLink) {
+                // 點開分享連結的旅伴，直接套用預設值並更新提示條，不跳問卷擋住行程
                 updatePersonaUI();
             } else {
                 openSurveyModal();
             }
 
             fetchWeatherAPI();
+            loadSharedPlanFromUrl();
         };
 
         function openSurveyModal() {
@@ -574,13 +591,6 @@
             document.getElementById('userInputQuery').value = text;
         }
 
-        // 放在 window.onload = function() { ... } 裡面的 fetchWeatherAPI(); 前面
-        Object.keys(mockDatabase).forEach(cityKey => {
-            const savedNewSpots = JSON.parse(localStorage.getItem(`ai_discovered_spots_${cityKey}`) || '[]');
-            if (savedNewSpots.length > 0) {
-               mockDatabase[cityKey] = [...mockDatabase[cityKey], ...savedNewSpots];
-            }
-        });
         async function fetchWeatherAPI() {
             const city = document.getElementById('citySelect').value;
             const dateVal = document.getElementById('travelDate').value;
@@ -593,7 +603,6 @@
 
             const coords = cityCoordinates[city] || cityCoordinates['台南'];
 
-            // 1. 檢查日期是否為過去日期
             const todayObj = new Date();
             todayObj.setHours(0, 0, 0, 0);
             const targetObj = new Date(dateVal);
@@ -610,7 +619,6 @@
                 return;
             }
 
-            // 2. 先讀取 localStorage 快取（30 分鐘內同城市直接秒開）
             const cacheKey = `weather_cache_${city}`;
             const cachedRaw = localStorage.getItem(cacheKey);
             let dailyData = null;
@@ -623,7 +631,6 @@
                 }
             }
 
-            // 3. 若無快取才發送網路請求，並設定 3 秒超時中斷（防止卡死）
             if (!dailyData) {
                 cityText.innerHTML = `<i class="fa-solid fa-cloud-sun animate-pulse text-amber-300"></i> ${city}市 (${dateVal}) · 連線更新中...`;
                 
@@ -657,7 +664,6 @@
                 }
             }
 
-            // 4. 渲染氣象畫面（快取與即時資料共用）
             cityText.innerHTML = `<i class="fa-solid fa-cloud-sun text-amber-300"></i> ${city}市 (${dateVal}) · 線上 API 即時預報`;
             const maxIndex = dailyData.temperature_2m_max.length - 1;
             const dayIdx = Math.min(diffDays, maxIndex);
@@ -687,174 +693,235 @@
                 currentLiveWeatherData = { temp: maxTemp, rainProb: rainProb, condition: 'sunny' };
             }
         }
-        // 讀取後台數據 + 串接 OpenStreetMap Overpass API 動態抓取真實新地點
-        // 備援擴充景點庫（當免費地圖 API 尖峰塞車時，演算法依然能依後台數據趨勢自動解鎖新景點）
-const aiBackupSpotsPool = {
-    '台南': {
-        'urban': [
-            { id: 'ai_tn_u1', name: '桑原商店 (昭和風文青小店)', lat: 22.9878, lon: 120.2195, tags: ['coffee', 'shopping', 'urban', 'indoor'], desc: '復古日系雜貨店風格，適合拍照打卡與品嚐限定霜淇淋甜點。', duration: '1 小時', durationHours: 1.0, score: '🤖 AI 數據推薦' },
-            { id: 'ai_tn_u2', name: '林百貨 HAYASHI (文創選物)', lat: 22.9918, lon: 120.2025, tags: ['shopping', 'urban', 'indoor'], desc: '全台最古老指針式電梯古蹟百貨，匯集台南在地工藝與質感伴手禮。', duration: '1.5 小時', durationHours: 1.5, score: '🤖 AI 數據推薦' },
-            { id: 'ai_tn_u3', name: '藍晒圖文創園區 (手作與設計)', lat: 22.9866, lon: 120.1972, tags: ['diy', 'shopping', 'urban', 'outdoor'], desc: '3D 藍晒圖地標與多間獨立皮件、陶藝手作工坊聚落。', duration: '2 小時', durationHours: 2.0, score: '🤖 AI 數據推薦' }
-        ],
-        'nature': [
-            { id: 'ai_tn_n1', name: '四草綠色隧道 (台江生態遊船)', lat: 23.0245, lon: 120.1362, tags: ['nature', 'sea', 'outdoor'], desc: '台灣版亞馬遜河，搭乘竹筏穿梭紅樹林交織的翠綠水上隧道。', duration: '1.5 小時', durationHours: 1.5, score: '🤖 AI 數據推薦' },
-            { id: 'ai_tn_n2', name: '安平定情碼頭德陽艦園區', lat: 22.9922, lon: 120.1565, tags: ['sea', 'outdoor', 'family'], desc: '全台唯一軍艦博物館，登艦吹海風遠眺安平港海景。', duration: '1.5 小時', durationHours: 1.5, score: '🤖 AI 數據推薦' },
-            { id: 'ai_tn_n3', name: '巴克禮紀念公園 (落羽松森林)', lat: 22.9740, lon: 120.2215, tags: ['mountain', 'nature', 'outdoor'], desc: '市區裡的生態秘境公園，木棧道與落羽松湖畔散步極度療癒。', duration: '1.5 小時', durationHours: 1.5, score: '🤖 AI 數據推薦' }
-        ]
-    },
-    '台中': {
-        'urban': [
-            { id: 'ai_tc_u1', name: '綠光計畫范特喜文創聚落', lat: 24.1485, lon: 120.6625, tags: ['diy', 'shopping', 'urban'], desc: '十二棟老宅改建的文創聚落，充滿獨立手作店與質感咖啡。', duration: '1.5 小時', durationHours: 1.5, score: '🤖 AI 數據推薦' },
-            { id: 'ai_tc_u2', name: '宮原眼科 (古蹟冰品與伴手禮)', lat: 24.1378, lon: 120.6835, tags: ['coffee', 'shopping', 'urban', 'indoor'], desc: '日治時期眼科改建的哈利波特風圖書館建築，必吃特色冰淇淋。', duration: '1 小時', durationHours: 1.0, score: '🤖 AI 數據推薦' },
-            { id: 'ai_tc_u3', name: '國立台灣美術館 (藝文特區)', lat: 24.1408, lon: 120.6628, tags: ['urban', 'indoor', 'family'], desc: '免費入場的大型當代藝術展館，冷氣舒適且周邊咖啡廳林立。', duration: '2 小時', durationHours: 2.0, score: '🤖 AI 數據推薦' }
-        ],
-        'nature': [
-            { id: 'ai_tc_n1', name: '秋紅谷景觀生態公園', lat: 24.1675, lon: 120.6398, tags: ['nature', 'outdoor'], desc: '都市裡的下凹式綠洲湖泊，環湖步道散步與夜景皆宜。', duration: '1 小時', durationHours: 1.0, score: '🤖 AI 數據推薦' },
-            { id: 'ai_tc_n2', name: '望高寮夜景公園 (山景眺望)', lat: 24.1462, lon: 120.5785, tags: ['mountain', 'nature', 'outdoor'], desc: '大肚山制高點，擁有 270 度開闊視野俯瞰台中盆地與海岸線。', duration: '1.5 小時', durationHours: 1.5, score: '🤖 AI 數據推薦' },
-            { id: 'ai_tc_n3', name: '薰衣草森林 (新社山林秘境)', lat: 24.1845, lon: 120.8480, tags: ['mountain', 'nature', 'outdoor'], desc: '隱身新社山谷的療癒花園，漫步香草步道與森林咖啡屋。', duration: '2.5 小時', durationHours: 2.5, score: '🤖 AI 數據推薦' }
-        ]
-    },
-    '花蓮': {
-        'urban': [
-            { id: 'ai_hl_u1', name: '花蓮文創園區 (a-zone)', lat: 23.9775, lon: 121.6048, tags: ['diy', 'shopping', 'urban'], desc: '百年酒廠改建的藝文空間，週末常有手作市集與展覽。', duration: '1.5 小時', durationHours: 1.5, score: '🤖 AI 數據推薦' },
-            { id: 'ai_hl_u2', name: '松園別館 (歷史建築咖啡)', lat: 23.9875, lon: 121.6152, tags: ['coffee', 'urban', 'indoor'], desc: '日治時期軍事建築，老松樹環繞且可遠眺美崙溪出海口與太平洋。', duration: '1.5 小時', durationHours: 1.5, score: '🤖 AI 數據推薦' },
-            { id: 'ai_hl_u3', name: '東大門夜市 (在地小吃巡禮)', lat: 23.9735, lon: 121.6115, tags: ['shopping', 'urban', 'outdoor'], desc: '花蓮最大規模夜市，聚集原住民風味料理與各式特色小吃。', duration: '2 小時', durationHours: 2.0, score: '🤖 AI 數據推薦' }
-        ],
-        'nature': [
-            { id: 'ai_hl_n1', name: '四八高地 (俯瞰七星潭月牙灣)', lat: 24.0155, lon: 121.6310, tags: ['sea', 'nature', 'outdoor'], desc: '居高臨下俯瞰整個七星潭太平洋海灣的絕佳秘境視角。', duration: '1 小時', durationHours: 1.0, score: '🤖 AI 數據推薦' },
-            { id: 'ai_hl_n2', name: '雲山水夢幻湖 (落羽松秘境)', lat: 23.8615, lon: 121.5385, tags: ['nature', 'outdoor'], desc: '蒂芬妮藍夢幻湖水搭配跳石瀑布與落羽松林，如詩如畫。', duration: '1.5 小時', durationHours: 1.5, score: '🤖 AI 數據推薦' },
-            { id: 'ai_hl_n3', name: '慶修院 (日式寺院庭園漫步)', lat: 23.9722, lon: 121.5642, tags: ['nature', 'outdoor'], desc: '台灣保存最完整的日式寺院古蹟，庭園清幽適合靜心散步。', duration: '1 小時', durationHours: 1.0, score: '🤖 AI 數據推薦' }
-        ]
-    },
-    '台北': {
-        'urban': [
-            { id: 'ai_tp_u1', name: '松山文創園區 (松菸手作與設計)', lat: 25.0438, lon: 121.5605, tags: ['diy', 'shopping', 'urban', 'indoor'], desc: '誠品生活松菸店匯集金工、玻璃吹製、陶藝等頂級手作體驗工坊。', duration: '2.5 小時', durationHours: 2.5, score: '🤖 AI 數據推薦' },
-            { id: 'ai_tp_u2', name: '華山 1914 文化創意產業園區', lat: 25.0441, lon: 121.5294, tags: ['shopping', 'coffee', 'urban'], desc: '紅磚老倉庫改建的展覽與選物聖地，充滿設計小店與特色咖啡館。', duration: '2 小時', durationHours: 2.0, score: '🤖 AI 數據推薦' },
-            { id: 'ai_tp_u3', name: '大稻埕迪化街 (百年老屋咖啡與手作)', lat: 25.0565, lon: 121.5098, tags: ['coffee', 'diy', 'shopping', 'urban'], desc: '巴洛克式歷史街屋，隱藏許多復古茶館、手沖咖啡與布藝手作店。', duration: '2 小時', durationHours: 2.0, score: '🤖 AI 數據推薦' }
-        ],
-        'nature': [
-            { id: 'ai_tp_n1', name: '大安森林公園 (都市之肺散步)', lat: 25.0298, lon: 121.5355, tags: ['nature', 'outdoor'], desc: '台北市中心最大的森林生態公園，生態池賞鳥與綠蔭步道漫步。', duration: '1.5 小時', durationHours: 1.5, score: '🤖 AI 數據推薦' },
-            { id: 'ai_tp_n2', name: '大稻埕碼頭貨櫃市集 (淡水河夕陽)', lat: 25.0568, lon: 121.5075, tags: ['sea', 'nature', 'outdoor'], desc: '傍晚沿著淡水河畔騎單車或散步，欣賞金色夕陽與河岸微風。', duration: '1.5 小時', durationHours: 1.5, score: '🤖 AI 數據推薦' },
-            { id: 'ai_tp_n3', name: '貓空纜車與茶園步道 (山邊品茗)', lat: 24.9685, lon: 121.5882, tags: ['mountain', 'nature', 'outdoor'], desc: '搭乘水晶車廂俯瞰台北盆地，漫步樟樹步道並在山間茶坊品茶。', duration: '3 小時', durationHours: 3.0, score: '🤖 AI 數據推薦' }
-        ]
-    }
-};
 
-async function discoverNewSpotsFromAnalytics() {
-    const city = document.getElementById('citySelect').value;
-    const coords = cityCoordinates[city] || cityCoordinates['台南'];
-    const btn = document.getElementById('aiDiscoverBtn');
-
-    // 1. 讀取後台數據 (smartvibe_logs)，統計目前哪一派族群佔比最高
-    const logs = JSON.parse(localStorage.getItem('smartvibe_logs') || '[]');
-    let urbanCount = 0;
-    let natureCount = 0;
-
-    if (logs.length > 0) {
-        logs.forEach(l => {
-            if (l.style === 'urban') urbanCount++;
-            else natureCount++;
-        });
-    } else {
-        if (currentUserPersona.style === 'urban') urbanCount = 1;
-        else natureCount = 1;
-    }
-
-    const dominantStyle = urbanCount >= natureCount ? 'urban' : 'nature';
-    const styleLabel = dominantStyle === 'urban' ? '都市咖啡/手作派' : '大自然/戶外派';
-
-    btn.disabled = true;
-    btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin text-amber-300"></i> 分析後台(${styleLabel}佔優)，正在挖掘${city}新景點...`;
-
-    const existingNames = new Set((mockDatabase[city] || []).map(s => s.name));
-    let newFoundSpots = [];
-
-    // 2. 優先嘗試連線 OpenStreetMap 鏡像伺服器（設定 4 秒超時避免卡住）
-    const osmFilter = dominantStyle === 'urban'
-        ? `node["amenity"="cafe"]["name"](around:3500,${coords.lat},${coords.lon});`
-        : `node["leisure"="park"]["name"](around:3500,${coords.lat},${coords.lon});`;
-
-    const query = `[out:json][timeout:5];(${osmFilter});out body 12;`;
-    const mirrors = [
-        'https://overpass.kumi.systems/api/interpreter',
-        'https://overpass-api.de/api/interpreter'
-    ];
-
-    for (const mirrorUrl of mirrors) {
-        try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 4000);
-            const res = await fetch(mirrorUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'data=' + encodeURIComponent(query),
-                signal: controller.signal
-            });
-            clearTimeout(timeoutId);
-
-            if (!res.ok) continue;
-            const data = await res.json();
-
-            for (const el of (data.elements || [])) {
-                const spotName = el.tags?.name;
-                if (!spotName || existingNames.has(spotName)) continue;
-                if (/星巴克|85度C|路易莎|麥當勞|肯德基|7-ELEVEN|全家/.test(spotName)) continue;
-
-                const fullName = `${spotName} (AI 地圖新挖掘)`;
-                if (existingNames.has(fullName)) continue;
-
-                existingNames.add(fullName);
-                newFoundSpots.push({
-                    id: `osm_${city}_${el.id}`,
-                    name: fullName,
-                    lat: el.lat,
-                    lon: el.lon,
-                    tags: dominantStyle === 'urban' ? ['coffee', 'indoor', 'urban'] : ['mountain', 'outdoor', 'nature'],
-                    desc: `依據後台「${styleLabel}」數據趨勢，從 OpenStreetMap 真實地圖資料庫自動挖掘之${city}在地推薦點。`,
-                    duration: dominantStyle === 'urban' ? '1.5 小時' : '1.5 - 2 小時',
-                    durationHours: 1.5,
-                    score: dominantStyle === 'urban' ? '🤖 AI 挖掘咖啡' : '🤖 AI 挖掘綠地'
-                });
-                if (newFoundSpots.length >= 3) break;
+        // 備援擴充景點庫
+        const aiBackupSpotsPool = {
+            '台南': {
+                'urban': [
+                    { id: 'ai_tn_u1', name: '桑原商店 (昭和風文青小店)', lat: 22.9878, lon: 120.2195, closedDays: [4], tags: ['coffee', 'shopping', 'urban', 'indoor'], desc: '復古日系雜貨店風格，適合拍照打卡與品嚐限定霜淇淋甜點。', duration: '1 小時', durationHours: 1.0, score: '🤖 AI 數據推薦' },
+                    { id: 'ai_tn_u2', name: '林百貨 HAYASHI (文創選物)', lat: 22.9918, lon: 120.2025, closedDays: [], tags: ['shopping', 'urban', 'indoor'], desc: '全台最古老指針式電梯古蹟百貨，匯集台南在地工藝與質感伴手禮。', duration: '1.5 小時', durationHours: 1.5, score: '🤖 AI 數據推薦' },
+                    { id: 'ai_tn_u3', name: '藍晒圖文創園區 (手作與設計)', lat: 22.9866, lon: 120.1972, closedDays: [2], tags: ['diy', 'shopping', 'urban', 'outdoor'], desc: '3D 藍晒圖地標與多間獨立皮件、陶藝手作工坊聚落。', duration: '2 小時', durationHours: 2.0, score: '🤖 AI 數據推薦' }
+                ],
+                'nature': [
+                    { id: 'ai_tn_n1', name: '四草綠色隧道 (台江生態遊船)', lat: 23.0245, lon: 120.1362, closedDays: [], tags: ['nature', 'sea', 'outdoor'], desc: '台灣版亞馬遜河，搭乘竹筏穿梭紅樹林交織的翠綠水上隧道。', duration: '1.5 小時', durationHours: 1.5, score: '🤖 AI 數據推薦' },
+                    { id: 'ai_tn_n2', name: '安平定情碼頭德陽艦園區', lat: 22.9922, lon: 120.1565, closedDays: [], tags: ['sea', 'outdoor', 'family'], desc: '全台唯一軍艦博物館，登艦吹海風遠眺安平港海景。', duration: '1.5 小時', durationHours: 1.5, score: '🤖 AI 數據推薦' },
+                    { id: 'ai_tn_n3', name: '巴克禮紀念公園 (落羽松森林)', lat: 22.9740, lon: 120.2215, closedDays: [], tags: ['mountain', 'nature', 'outdoor'], desc: '市區裡的生態秘境公園，木棧道與落羽松湖畔散步極度療癒。', duration: '1.5 小時', durationHours: 1.5, score: '🤖 AI 數據推薦' }
+                ]
+            },
+            '台中': {
+                'urban': [
+                    { id: 'ai_tc_u1', name: '綠光計畫范特喜文創聚落', lat: 24.1485, lon: 120.6625, closedDays: [], tags: ['diy', 'shopping', 'urban'], desc: '十二棟老宅改建的文創聚落，充滿獨立手作店與質感咖啡。', duration: '1.5 小時', durationHours: 1.5, score: '🤖 AI 數據推薦' },
+                    { id: 'ai_tc_u2', name: '宮原眼科 (古蹟冰品與伴手禮)', lat: 24.1378, lon: 120.6835, closedDays: [], tags: ['coffee', 'shopping', 'urban', 'indoor'], desc: '日治時期眼科改建的哈利波特風圖書館建築，必吃特色冰淇淋。', duration: '1 小時', durationHours: 1.0, score: '🤖 AI 數據推薦' },
+                    { id: 'ai_tc_u3', name: '國立台灣美術館 (藝文特區)', lat: 24.1408, lon: 120.6628, closedDays: [1], tags: ['urban', 'indoor', 'family'], desc: '免費入場的大型當代藝術展館，冷氣舒適且周邊咖啡廳林立。', duration: '2 小時', durationHours: 2.0, score: '🤖 AI 數據推薦' }
+                ],
+                'nature': [
+                    { id: 'ai_tc_n1', name: '秋紅谷景觀生態公園', lat: 24.1675, lon: 120.6398, closedDays: [], tags: ['nature', 'outdoor'], desc: '都市裡的下凹式綠洲湖泊，環湖步道散步與夜景皆宜。', duration: '1 小時', durationHours: 1.0, score: '🤖 AI 數據推薦' },
+                    { id: 'ai_tc_n2', name: '望高寮夜景公園 (山景眺望)', lat: 24.1462, lon: 120.5785, closedDays: [], tags: ['mountain', 'nature', 'outdoor'], desc: '大肚山制高點，擁有 270 度開闊視野俯瞰台中盆地與海岸線。', duration: '1.5 小時', durationHours: 1.5, score: '🤖 AI 數據推薦' },
+                    { id: 'ai_tc_n3', name: '薰衣草森林 (新社山林秘境)', lat: 24.1845, lon: 120.8480, closedDays: [], tags: ['mountain', 'nature', 'outdoor'], desc: '隱身新社山谷的療癒花園，漫步香草步道與森林咖啡屋。', duration: '2.5 小時', durationHours: 2.5, score: '🤖 AI 數據推薦' }
+                ]
+            },
+            '花蓮': {
+                'urban': [
+                    { id: 'ai_hl_u1', name: '花蓮文創園區 (a-zone)', lat: 23.9775, lon: 121.6048, closedDays: [], tags: ['diy', 'shopping', 'urban'], desc: '百年酒廠改建的藝文空間，週末常有手作市集與展覽。', duration: '1.5 小時', durationHours: 1.5, score: '🤖 AI 數據推薦' },
+                    { id: 'ai_hl_u2', name: '松園別館 (歷史建築咖啡)', lat: 23.9875, lon: 121.6152, closedDays: [], tags: ['coffee', 'urban', 'indoor'], desc: '日治時期軍事建築，老松樹環繞且可遠眺美崙溪出海口與太平洋。', duration: '1.5 小時', durationHours: 1.5, score: '🤖 AI 數據推薦' },
+                    { id: 'ai_hl_u3', name: '東大門夜市 (在地小吃巡禮)', lat: 23.9735, lon: 121.6115, closedDays: [], tags: ['shopping', 'urban', 'outdoor'], desc: '花蓮最大規模夜市，聚集原住民風味料理與各式特色小吃。', duration: '2 小時', durationHours: 2.0, score: '🤖 AI 數據推薦' }
+                ],
+                'nature': [
+                    { id: 'ai_hl_n1', name: '四八高地 (俯瞰七星潭月牙灣)', lat: 24.0155, lon: 121.6310, closedDays: [], tags: ['sea', 'nature', 'outdoor'], desc: '居高臨下俯瞰整個七星潭太平洋海灣的絕佳秘境視角。', duration: '1 小時', durationHours: 1.0, score: '🤖 AI 數據推薦' },
+                    { id: 'ai_hl_n2', name: '雲山水夢幻湖 (落羽松秘境)', lat: 23.8615, lon: 121.5385, closedDays: [], tags: ['nature', 'outdoor'], desc: '蒂芬妮藍夢幻湖水搭配跳石瀑布與落羽松林，如詩如畫。', duration: '1.5 小時', durationHours: 1.5, score: '🤖 AI 數據推薦' },
+                    { id: 'ai_hl_n3', name: '慶修院 (日式寺院庭園漫步)', lat: 23.9722, lon: 121.5642, closedDays: [1], tags: ['nature', 'outdoor'], desc: '台灣保存最完整的日式寺院古蹟，庭園清幽適合靜心散步。', duration: '1 小時', durationHours: 1.0, score: '🤖 AI 數據推薦' }
+                ]
+            },
+            '台北': {
+                'urban': [
+                    { id: 'ai_tp_u1', name: '松山文創園區 (松菸手作與設計)', lat: 25.0438, lon: 121.5605, closedDays: [], tags: ['diy', 'shopping', 'urban', 'indoor'], desc: '誠品生活松菸店匯集金工、玻璃吹製、陶藝等頂級手作體驗工坊。', duration: '2.5 小時', durationHours: 2.5, score: '🤖 AI 數據推薦' },
+                    { id: 'ai_tp_u2', name: '華山 1914 文化創意產業園區', lat: 25.0441, lon: 121.5294, closedDays: [], tags: ['shopping', 'coffee', 'urban'], desc: '紅磚老倉庫改建的展覽與選物聖地，充滿設計小店與特色咖啡館。', duration: '2 小時', durationHours: 2.0, score: '🤖 AI 數據推薦' },
+                    { id: 'ai_tp_u3', name: '大稻埕迪化街 (百年老屋咖啡與手作)', lat: 25.0565, lon: 121.5098, closedDays: [], tags: ['coffee', 'diy', 'shopping', 'urban'], desc: '巴洛克式歷史街屋，隱藏許多復古茶館、手沖咖啡與布藝手作店。', duration: '2 小時', durationHours: 2.0, score: '🤖 AI 數據推薦' }
+                ],
+                'nature': [
+                    { id: 'ai_tp_n1', name: '大安森林公園 (都市之肺散步)', lat: 25.0298, lon: 121.5355, closedDays: [], tags: ['nature', 'outdoor'], desc: '台北市中心最大的森林生態公園，生態池賞鳥與綠蔭步道漫步。', duration: '1.5 小時', durationHours: 1.5, score: '🤖 AI 數據推薦' },
+                    { id: 'ai_tp_n2', name: '大稻埕碼頭貨櫃市集 (淡水河夕陽)', lat: 25.0568, lon: 121.5075, closedDays: [], tags: ['sea', 'nature', 'outdoor'], desc: '傍晚沿著淡水河畔騎單車或散步，欣賞金色夕陽與河岸微風。', duration: '1.5 小時', durationHours: 1.5, score: '🤖 AI 數據推薦' },
+                    { id: 'ai_tp_n3', name: '貓空纜車與茶園步道 (山邊品茗)', lat: 24.9685, lon: 121.5882, closedDays: [1], tags: ['mountain', 'nature', 'outdoor'], desc: '搭乘水晶車廂俯瞰台北盆地，漫步樟樹步道並在山間茶坊品茶。', duration: '3 小時', durationHours: 3.0, score: '🤖 AI 數據推薦' }
+                ]
             }
-            if (newFoundSpots.length > 0) break; // 成功抓到就跳出鏡像迴圈
-        } catch (e) {
-            // 靜默切換下一個鏡像或進入下方備援庫，不報紅字錯誤
-        }
-    }
+        };
 
-    // 3. 若線上地圖 API 尖峰塞車沒抓到，自動啟動「數據驅動備援景點庫」無縫補位
-    if (newFoundSpots.length === 0) {
-        const backupCandidates = (aiBackupSpotsPool[city] && aiBackupSpotsPool[city][dominantStyle]) || [];
-        for (const item of backupCandidates) {
-            if (!existingNames.has(item.name)) {
-                existingNames.add(item.name);
-                newFoundSpots.push({ ...item });
+        // 解析 OpenStreetMap 的 opening_hours 字串，自動轉成 closedDays 陣列 (0=週日 ~ 6=週六)
+        function parseOsmClosedDays(openingHoursStr) {
+            if (!openingHoursStr || typeof openingHoursStr !== 'string') return [];
+            const str = openingHoursStr.trim();
+            if (str === '24/7') return [];
+
+            const dayMap = { 'Su': 0, 'Mo': 1, 'Tu': 2, 'We': 3, 'Th': 4, 'Fr': 5, 'Sa': 6 };
+            const allDays = [0, 1, 2, 3, 4, 5, 6];
+            const closedSet = new Set();
+
+            // 輔助函式：把 "Mo-Fr" 或 "Tu,Th" 展開成數字陣列
+            function expandDayTokens(tokenPart) {
+                const result = [];
+                const parts = tokenPart.split(',');
+                for (const p of parts) {
+                    const rangeMatch = p.trim().match(/^(Su|Mo|Tu|We|Th|Fr|Sa)-(Su|Mo|Tu|We|Th|Fr|Sa)$/);
+                    if (rangeMatch) {
+                        let start = dayMap[rangeMatch[1]];
+                        let end = dayMap[rangeMatch[2]];
+                        let curr = start;
+                        while (true) {
+                            result.push(curr);
+                            if (curr === end) break;
+                            curr = (curr + 1) % 7;
+                        }
+                    } else if (dayMap[p.trim()] !== undefined) {
+                        result.push(dayMap[p.trim()]);
+                    }
+                }
+                return result;
             }
+
+            // 情況 A：明確寫出某天公休，例如 "Tu off" 或 "Mo,Tu closed"
+            const offMatches = str.matchAll(/((?:Su|Mo|Tu|We|Th|Fr|Sa)(?:[-,](?:Su|Mo|Tu|We|Th|Fr|Sa))*)\s+(?:off|closed)/gi);
+            for (const match of offMatches) {
+                expandDayTokens(match[1]).forEach(d => closedSet.add(d));
+            }
+            if (closedSet.size > 0) return Array.from(closedSet);
+
+            // 情況 B：只寫出有營業的星期，例如 "We-Su 10:00-18:00"（沒寫到的就是公休）
+            const openMatches = str.matchAll(/((?:Su|Mo|Tu|We|Th|Fr|Sa)(?:[-,](?:Su|Mo|Tu|We|Th|Fr|Sa))*)\s+\d{1,2}:\d{2}/g);
+            const openSet = new Set();
+            for (const match of openMatches) {
+                expandDayTokens(match[1]).forEach(d => openSet.add(d));
+            }
+            if (openSet.size > 0 && openSet.size < 7) {
+                return allDays.filter(d => !openSet.has(d));
+            }
+
+            return [];
         }
-    }
-
-    // 4. 寫入 localStorage 並更新畫面
-    if (newFoundSpots.length === 0) {
-        alert(`🎉 目前「${city}」的 ${styleLabel} 推薦景點已全數擴充完畢！\n你可以切換到其他縣市（台中/花蓮/台北）或改變後台問卷風格再挖掘喔！`);
-    } else {
-        const storageKey = `ai_discovered_spots_${city}`;
-        const prevSaved = JSON.parse(localStorage.getItem(storageKey) || '[]');
-        localStorage.setItem(storageKey, JSON.stringify([...prevSaved, ...newFoundSpots]));
-
-        mockDatabase[city] = [...mockDatabase[city], ...newFoundSpots];
-        alert(`🎉 AI 數據演算法執行成功！\n根據後台數據（${styleLabel}佔比最高），已為您自動新增 ${newFoundSpots.length} 個${city}新景點：\n\n• ${newFoundSpots.map(s => s.name).join('\n• ')}`);
-        generatePlan();
-    }
-
-    btn.disabled = false;
-    btn.innerHTML = `<i class="fa-solid fa-robot text-amber-400"></i> 依後台數據趨勢，自動從地圖 API 挖掘 3 個真實新景點`;
-}
-
-        function generatePlan() {
+        async function discoverNewSpotsFromAnalytics() {
             const city = document.getElementById('citySelect').value;
+            const coords = cityCoordinates[city] || cityCoordinates['台南'];
+            const btn = document.getElementById('aiDiscoverBtn');
+
+            const logs = JSON.parse(localStorage.getItem('smartvibe_logs') || '[]');
+            let urbanCount = 0;
+            let natureCount = 0;
+
+            if (logs.length > 0) {
+                logs.forEach(l => {
+                    if (l.style === 'urban') urbanCount++;
+                    else natureCount++;
+                });
+            } else {
+                if (currentUserPersona.style === 'urban') urbanCount = 1;
+                else natureCount = 1;
+            }
+
+            const dominantStyle = urbanCount >= natureCount ? 'urban' : 'nature';
+            const styleLabel = dominantStyle === 'urban' ? '都市咖啡/手作派' : '大自然/戶外派';
+
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin text-amber-300"></i> 分析後台(${styleLabel}佔優)，正在挖掘${city}新景點...`;
+
+            const existingNames = new Set((mockDatabase[city] || []).map(s => s.name));
+            let newFoundSpots = [];
+
+            const osmFilter = dominantStyle === 'urban'
+                ? `node["amenity"="cafe"]["name"](around:3500,${coords.lat},${coords.lon});`
+                : `node["leisure"="park"]["name"](around:3500,${coords.lat},${coords.lon});`;
+
+            const query = `[out:json][timeout:5];(${osmFilter});out body 12;`;
+            const mirrors = [
+                'https://overpass.kumi.systems/api/interpreter',
+                'https://overpass-api.de/api/interpreter'
+            ];
+
+            for (const mirrorUrl of mirrors) {
+                try {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 4000);
+                    const res = await fetch(mirrorUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: 'data=' + encodeURIComponent(query),
+                        signal: controller.signal
+                    });
+                    clearTimeout(timeoutId);
+
+                    if (!res.ok) continue;
+                    const data = await res.json();
+
+                    for (const el of (data.elements || [])) {
+                        const spotName = el.tags?.name;
+                        if (!spotName || existingNames.has(spotName)) continue;
+                        if (/星巴克|85度C|路易莎|麥當勞|肯德基|7-ELEVEN|全家/.test(spotName)) continue;
+
+                        const fullName = `${spotName} (AI 地圖新挖掘)`;
+                        if (existingNames.has(fullName)) continue;
+
+                        const rawOpeningHours = el.tags?.opening_hours || '';
+                        const detectedClosedDays = parseOsmClosedDays(rawOpeningHours);
+                        const weekLabels = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
+                        const closedNote = detectedClosedDays.length > 0 
+                            ? `（OSM 營業時間連動：${detectedClosedDays.map(d => weekLabels[d]).join('、')}公休）` 
+                            : (rawOpeningHours ? `（營業時間：${rawOpeningHours}）` : '');
+
+                        existingNames.add(fullName);
+                        newFoundSpots.push({
+                            id: `osm_${city}_${el.id}`,
+                            name: fullName,
+                            lat: el.lat,
+                            lon: el.lon,
+                            closedDays: detectedClosedDays, // 自動寫入解析出來的公休日！
+                            tags: dominantStyle === 'urban' ? ['coffee', 'indoor', 'urban'] : ['mountain', 'outdoor', 'nature'],
+                            desc: `依據後台「${styleLabel}」數據趨勢，從 OpenStreetMap 真實地圖資料庫自動挖掘之${city}在地推薦點。${closedNote}`,
+                            duration: dominantStyle === 'urban' ? '1.5 小時' : '1.5 - 2 小時',
+                            durationHours: 1.5,
+                            score: dominantStyle === 'urban' ? '🤖 AI 挖掘咖啡' : '🤖 AI 挖掘綠地'
+                        });
+
+                        if (newFoundSpots.length >= 3) break;
+
+                        
+                    }
+                    if (newFoundSpots.length > 0) break;
+                } catch (e) {}
+            }
+
+            if (newFoundSpots.length === 0) {
+                const backupCandidates = (aiBackupSpotsPool[city] && aiBackupSpotsPool[city][dominantStyle]) || [];
+                for (const item of backupCandidates) {
+                    if (!existingNames.has(item.name)) {
+                        existingNames.add(item.name);
+                        newFoundSpots.push({ ...item });
+                    }
+                }
+            }
+
+            if (newFoundSpots.length === 0) {
+                alert(`🎉 目前「${city}」的 ${styleLabel} 推薦景點已全數擴充完畢！\n你可以切換到其他縣市（台中/花蓮/台北）或改變後台問卷風格再挖掘喔！`);
+            } else {
+                const storageKey = `ai_discovered_spots_${city}`;
+                const prevSaved = JSON.parse(localStorage.getItem(storageKey) || '[]');
+                localStorage.setItem(storageKey, JSON.stringify([...prevSaved, ...newFoundSpots]));
+
+                mockDatabase[city] = [...mockDatabase[city], ...newFoundSpots];
+                alert(`🎉 AI 數據演算法執行成功！\n根據後台數據（${styleLabel}佔比最高），已為您自動新增 ${newFoundSpots.length} 個${city}新景點：\n\n• ${newFoundSpots.map(s => s.name).join('\n• ')}`);
+                generatePlan();
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = `<i class="fa-solid fa-robot text-amber-400"></i> 依後台數據趨勢，自動從地圖 API 挖掘 3 個真實新景點`;
+        }
+
+        function generatePlan(presetSpotIds = null) {
+            const city = document.getElementById('citySelect').value;
+            const dateVal = document.getElementById('travelDate').value;
             const query = document.getElementById('userInputQuery').value.trim().toLowerCase();
             const hasUserQuery = query.length > 0;
+
+            const [y, m, d] = dateVal.split('-').map(Number);
+            const dayOfWeek = new Date(y, m - 1, d).getDay();
+            const weekNames = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
 
             const isCoffeeQuery = query.includes('咖啡') || query.includes('咖啡廳') || query.includes('下午茶') || query.includes('杏源');
             const isDiyQuery = query.includes('diy') || query.includes('手作') || query.includes('燙布貼') || query.includes('銀黏土') || query.includes('金工') || query.includes('玉品');
@@ -868,14 +935,12 @@ async function discoverNewSpotsFromAnalytics() {
                 let queryMatch = false;
                 let score = 0;
 
-                // 1. 關鍵字精準匹配 (+100 分)
                 if (isCoffeeQuery && spot.tags.includes('coffee')) { score += 100; queryMatch = true; }
                 if (isDiyQuery && spot.tags.includes('diy')) { score += 100; queryMatch = true; }
                 if (isShoppingQuery && spot.tags.includes('shopping')) { score += 100; queryMatch = true; }
                 if (isAmusementQuery && spot.tags.includes('amusement')) { score += 100; queryMatch = true; }
                 if (isSeaMountainQuery && (spot.tags.includes('sea') || spot.tags.includes('mountain'))) { score += 100; queryMatch = true; }
 
-                // 若輸入自由文字但未命中預設分類，直接比對景點名稱與簡介文字
                 if (hasUserQuery && !queryMatch) {
                     if (spot.name.toLowerCase().includes(query) || spot.desc.toLowerCase().includes(query)) {
                         score += 100;
@@ -883,16 +948,17 @@ async function discoverNewSpotsFromAnalytics() {
                     }
                 }
 
-                // 2. 天氣連動微調（下雨或高溫時室內景點加分）
                 if ((currentLiveWeatherData.rainProb >= 60 || currentLiveWeatherData.temp >= 35) && spot.tags.includes('indoor')) {
                     score += 10;
                 }
 
-                // 3. 個人風格加分
                 if (currentUserPersona.style === 'urban' && spot.tags.includes('urban')) score += 5;
                 if (currentUserPersona.style === 'nature' && (spot.tags.includes('outdoor') || spot.tags.includes('nature'))) score += 5;
 
-                return { ...spot, matchScore: score, isQueryMatch: queryMatch };
+                const isClosedToday = Array.isArray(spot.closedDays) && spot.closedDays.includes(dayOfWeek);
+                if (isClosedToday) score -= 500;
+
+                return { ...spot, matchScore: score, isQueryMatch: queryMatch, isClosedToday: isClosedToday };
             });
 
             currentDisplayedCandidateSpots.sort((a, b) => b.matchScore - a.matchScore);
@@ -900,21 +966,31 @@ async function discoverNewSpotsFromAnalytics() {
             const itineraryList = document.getElementById('itineraryList');
             itineraryList.innerHTML = '';
 
-            // 檢查是否有任何一筆命中關鍵字
-            const anyQueryMatched = currentDisplayedCandidateSpots.some(s => s.isQueryMatch);
+            const anyQueryMatched = currentDisplayedCandidateSpots.some(s => s.isQueryMatch && !s.isClosedToday);
+            let autoCheckedCount = 0;
 
-            currentDisplayedCandidateSpots.forEach((spot, idx) => {
-                // 智慧預勾選：有輸入且有命中時只勾選命中項目；否則預設勾選最符合個人風格的前 3 個景點
-                const isAutoChecked = (hasUserQuery && anyQueryMatched) ? spot.isQueryMatch : (idx < 3);
+            currentDisplayedCandidateSpots.forEach(spot => {
+                let isAutoChecked = false;
+                if (presetSpotIds && !spot.isClosedToday) {
+                    isAutoChecked = presetSpotIds.includes(spot.id);
+                } else if (!spot.isClosedToday) {
+                    if (hasUserQuery && anyQueryMatched) {
+                        isAutoChecked = spot.isQueryMatch;
+                    } else if (autoCheckedCount < 3) {
+                        isAutoChecked = true;
+                        autoCheckedCount++;
+                    }
+                }
 
                 itineraryList.innerHTML += `
-                    <label class="bg-white border ${isAutoChecked ? 'border-amber-600 ring-1 ring-amber-600/30' : 'border-amber-900/10 opacity-85'} rounded-2xl p-4 shadow-sm hover:shadow-md transition flex items-center justify-between cursor-pointer select-none">
+                    <label class="bg-white border ${spot.isClosedToday ? 'border-rose-300 bg-rose-50/40 opacity-65 cursor-not-allowed' : (isAutoChecked ? 'border-amber-600 ring-1 ring-amber-600/30 cursor-pointer' : 'border-amber-900/10 opacity-85 cursor-pointer')} rounded-2xl p-4 shadow-sm hover:shadow-md transition flex items-center justify-between select-none">
                         <div class="flex items-center gap-3">
-                            <input type="checkbox" value="${spot.id}" ${isAutoChecked ? 'checked' : ''} class="spot-checkbox w-5 h-5 text-amber-800 rounded focus:ring-amber-800 border-amber-300 shrink-0">
+                            <input type="checkbox" value="${spot.id}" ${isAutoChecked && !spot.isClosedToday ? 'checked' : ''} ${spot.isClosedToday ? 'disabled' : ''} class="spot-checkbox w-5 h-5 text-amber-800 rounded focus:ring-amber-800 border-amber-300 shrink-0 disabled:cursor-not-allowed disabled:opacity-40">
                             <div class="space-y-1">
                                 <h4 class="font-bold text-stone-900 text-sm flex flex-wrap items-center gap-2">
                                     ${spot.name}
-                                    ${spot.isQueryMatch ? '<span class="text-[10px] bg-emerald-700 text-white font-bold px-2 py-0.5 rounded">✨ 符合搜尋</span>' : ''}
+                                    ${spot.isClosedToday ? `<span class="text-[10px] bg-rose-600 text-white font-bold px-2 py-0.5 rounded">🚫 ${weekNames[dayOfWeek]}公休（不可選）</span>` : ''}
+                                    ${spot.isQueryMatch && !spot.isClosedToday ? '<span class="text-[10px] bg-emerald-700 text-white font-bold px-2 py-0.5 rounded">✨ 符合搜尋</span>' : ''}
                                     <span class="text-[10px] bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded">${spot.score}</span>
                                     <span class="text-[10px] bg-stone-100 text-stone-600 font-medium px-2 py-0.5 rounded"><i class="fa-regular fa-clock"></i> 建議停留: ${spot.duration}</span>
                                 </h4>
@@ -937,31 +1013,22 @@ async function discoverNewSpotsFromAnalytics() {
             document.getElementById('resultContainer').classList.remove('hidden');
         }
 
-        // 智慧時段權重偵測（確保夕陽與夜市景點優先壓在行程最後面）
         function getTimeSlotPenalty(spot, currentHour, remainingCount) {
             const text = (spot.name + spot.desc + spot.score).toLowerCase();
-            
-            // 1. 夜市類景點：只要還有其他白天景點沒去，就給予極大懲罰 (+100km)，強制排到最後
             if (text.includes('夜市')) {
                 if (remainingCount > 1 && currentHour < 17) return 100;
                 return currentHour >= 17 ? -10 : 30;
             }
-
-            // 2. 夕陽/海邊看日落景點（漁光島、高美濕地）：
-            // 只要還有其他非夕陽景點沒去，且現在還沒到傍晚 16:00，就給予大懲罰 (+60km) 讓它排在最後一站
             if (text.includes('夕陽') || text.includes('高美濕地') || text.includes('漁光島')) {
                 if (remainingCount > 1 && currentHour < 16) return 60;
                 if (currentHour >= 15.5 && currentHour <= 18.5) return -10;
             }
-
-            // 3. 咖啡廳：下午茶時段 (13:30 ~ 17:00) 微幅加分
             if (spot.tags.includes('coffee') && currentHour >= 13.5 && currentHour <= 17) {
                 return -2;
             }
             return 0;
         }
 
-        // 升級版：起點樞紐 + 距離與時段雙權重 + 動態交通時間推算
         function optimizeSelectedRoute() {
             const checkedBoxes = document.querySelectorAll('.spot-checkbox:checked');
             if (checkedBoxes.length === 0) {
@@ -980,8 +1047,8 @@ async function discoverNewSpotsFromAnalytics() {
             const [startH, startM] = startTimeVal.split(':').map(Number);
             const initialMinutes = startH * 60 + startM;
             let totalMinutes = initialMinutes;
+            let lunchInserted = false;
 
-            // 以該縣市火車站作為「虛擬起點」挑選最適合的第一站
             let currentPos = cityStartHubs[city] || { lat: unvisited[0].lat, lon: unvisited[0].lon };
             currentOptimizedRoute = [];
 
@@ -999,13 +1066,12 @@ async function discoverNewSpotsFromAnalytics() {
                     if (totalCost < lowestCost) {
                         lowestCost = totalCost;
                         bestIdx = i;
-                        bestRealDist = straightDist * 1.3; // 道路曲折係數 1.3
+                        bestRealDist = straightDist * 1.3;
                     }
                 }
 
                 const nextSpot = unvisited.splice(bestIdx, 1)[0];
 
-                // 動態計算交通移動時間（分鐘）
                 let travelMins = 0;
                 if (transportMode === 'car') {
                     travelMins = Math.round((bestRealDist / 30) * 60) + (currentOptimizedRoute.length === 0 ? 5 : 10);
@@ -1018,6 +1084,15 @@ async function discoverNewSpotsFromAnalytics() {
                     totalMinutes += travelMins;
                 }
 
+                let lunchBreakBefore = null;
+                if (currentOptimizedRoute.length > 0 && !lunchInserted && totalMinutes >= 11 * 60 + 45 && totalMinutes <= 13 * 60 + 30) {
+                    const lunchStart = formatMinsToHHMM(totalMinutes);
+                    totalMinutes += 60;
+                    const lunchEnd = formatMinsToHHMM(totalMinutes);
+                    lunchBreakBefore = `${lunchStart} - ${lunchEnd}`;
+                    lunchInserted = true;
+                }
+
                 const arriveTime = formatMinsToHHMM(totalMinutes);
                 const stayMins = Math.round((nextSpot.durationHours || 1.5) * 60);
                 totalMinutes += stayMins;
@@ -1028,6 +1103,7 @@ async function discoverNewSpotsFromAnalytics() {
                     time: `${arriveTime} - ${leaveTime}`,
                     arriveTime: arriveTime,
                     leaveTime: leaveTime,
+                    lunchBreakBefore: lunchBreakBefore,
                     travelMinsFromPrev: currentOptimizedRoute.length === 0 ? 0 : travelMins,
                     distFromPrev: bestRealDist.toFixed(1),
                     transportIcon: transportMode === 'car' ? '🚗' : '🚌'
@@ -1036,15 +1112,13 @@ async function discoverNewSpotsFromAnalytics() {
                 currentPos = { lat: nextSpot.lat, lon: nextSpot.lon };
             }
 
-            // 計算總行程時間與結束時間提醒
             const durationTotalMins = totalMinutes - initialMinutes;
             const totalHrs = Math.floor(durationTotalMins / 60);
             const remMins = durationTotalMins % 60;
             const finalEndTime = formatMinsToHHMM(totalMinutes);
 
-            document.getElementById('routeSummaryStats').innerText = `共 ${currentOptimizedRoute.length} 個景點 · 總計約 ${totalHrs} 小時 ${remMins > 0 ? remMins + ' 分鐘' : ''}（預計 ${finalEndTime} 結束）`;
+            document.getElementById('routeSummaryStats').innerText = `共 ${currentOptimizedRoute.length} 個景點${lunchInserted ? '（含 1 小時午餐補給）' : ''} · 總計約 ${totalHrs} 小時 ${remMins > 0 ? remMins + ' 分鐘' : ''}（預計 ${finalEndTime} 結束）`;
 
-            // 只要「總行程超過 8 小時」或「結束時間晚於 19:30（晚上7點半）」，就跳出活動過多提醒
             const lateWarning = document.getElementById('lateNightWarning');
             if (durationTotalMins > 8 * 60 || totalMinutes > 19.5 * 60) {
                 lateWarning.innerHTML = `
@@ -1064,23 +1138,6 @@ async function discoverNewSpotsFromAnalytics() {
             renderOptimizedRouteUI();
         }
 
-        function formatMinsToHHMM(mins) {
-            const h = Math.floor(mins / 60) % 24;
-            const m = mins % 60;
-            return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-        }
-
-        function calculateDistance(lat1, lon1, lat2, lon2) {
-            const R = 6371;
-            const dLat = (lat2 - lat1) * Math.PI / 180;
-            const dLon = (lon2 - lon1) * Math.PI / 180;
-            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                      Math.sin(dLon / 2) * Math.sin(dLon / 2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            return R * c;
-        }
-
         function renderOptimizedRouteUI() {
             const container = document.getElementById('optimizedStepsContainer');
             container.innerHTML = '';
@@ -1095,6 +1152,17 @@ async function discoverNewSpotsFromAnalytics() {
                         <div class="flex items-center gap-2 pl-6 py-0.5 text-xs text-emerald-300/90 font-medium">
                             <i class="fa-solid fa-arrow-down-long text-amber-400"></i>
                             <span>${spot.transportIcon} 移動約 ${spot.travelMinsFromPrev} 分鐘 (距離約 ${spot.distFromPrev} km)</span>
+                        </div>
+                    `;
+                }
+
+                if (spot.lunchBreakBefore) {
+                    container.innerHTML += `
+                        <div class="bg-amber-950/80 border border-dashed border-amber-400/60 rounded-xl p-3 my-1 flex items-center justify-between">
+                            <div class="flex items-center gap-2.5">
+                                <span class="bg-amber-400 text-stone-950 text-xs px-2 py-0.5 rounded font-extrabold">🍜 午間補給</span>
+                                <span class="text-xs text-amber-200 font-bold">[${spot.lunchBreakBefore}] 在地美食午餐與休息時間（已自動保留 1 小時）</span>
+                            </div>
                         </div>
                     `;
                 }
@@ -1125,7 +1193,60 @@ async function discoverNewSpotsFromAnalytics() {
             document.getElementById('optimizedRoutePanel').classList.remove('hidden');
         }
 
-        // 渲染【旗艦級寫實繪本滿版旅遊海報】
+        function copyShareUrl() {
+            const city = document.getElementById('citySelect').value;
+            const dateVal = document.getElementById('travelDate').value;
+            const startTime = document.getElementById('startTimeInput').value;
+            const mode = document.getElementById('transportModeSelect').value;
+            const spotIds = currentOptimizedRoute.map(s => s.id).join(',');
+
+            const payload = encodeURIComponent(`${city}|${dateVal}|${startTime}|${mode}|${spotIds}`);
+            const baseUrl = window.location.href.split('#')[0];
+            const shareUrl = `${baseUrl}#plan=${payload}`;
+
+            navigator.clipboard.writeText(shareUrl);
+            alert('🔗 已成功複製專屬行程分享連結！\n直接傳到 LINE 給旅伴，對方點開就會自動載入這份排好的行程喔！');
+        }
+
+        function loadSharedPlanFromUrl() {
+            const hash = window.location.hash;
+            if (!hash.startsWith('#plan=')) return;
+
+            try {
+                const decoded = decodeURIComponent(hash.replace('#plan=', ''));
+                const [city, dateVal, startTime, mode, spotIdsStr] = decoded.split('|');
+                if (!city || !spotIdsStr) return;
+
+                document.getElementById('citySelect').value = city;
+                if (dateVal) document.getElementById('travelDate').value = dateVal;
+                if (startTime) document.getElementById('startTimeInput').value = startTime;
+                if (mode) document.getElementById('transportModeSelect').value = mode;
+
+                const spotIds = spotIdsStr.split(',');
+                generatePlan(spotIds);
+                optimizeSelectedRoute();
+            } catch (e) {
+                console.warn('分享連結解析失敗', e);
+            }
+        }
+
+        function formatMinsToHHMM(mins) {
+            const h = Math.floor(mins / 60) % 24;
+            const m = mins % 60;
+            return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+        }
+
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
+
         function renderPosterVisualCard() {
             const city = document.getElementById('citySelect').value;
             const dateVal = document.getElementById('travelDate').value;
@@ -1207,7 +1328,6 @@ async function discoverNewSpotsFromAnalytics() {
             alert('已成功複製 LINE 旅遊懶人包文字（含 Google Maps 導航連結）！');
         }
 
-        // 全量數據統計動態演算法
         function renderAnalyticsCharts() {
             const logs = JSON.parse(localStorage.getItem('smartvibe_logs') || '[]');
             const tbody = document.getElementById('analyticsTableBody');
@@ -1261,7 +1381,6 @@ async function discoverNewSpotsFromAnalytics() {
             });
         }
 
-        // 基於全量資料計算並生成商業策略報告
         function generateReport() {
             const logs = JSON.parse(localStorage.getItem('smartvibe_logs') || '[]');
             const total = logs.length;
