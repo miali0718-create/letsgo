@@ -94,13 +94,13 @@
             <button onclick="openSurveyModal()" class="text-xs text-amber-900 font-bold underline hover:text-amber-950 shrink-0">重新設定偏好</button>
         </div>
 
-        <!-- 搜尋與天氣控制台（優化為俐落 3 欄） -->
+        <!-- 搜尋與天氣控制台（俐落 2 欄） -->
         <div class="forest-card rounded-2xl p-6 shadow-md">
             <h2 class="text-lg font-bold text-stone-900 mb-4 flex items-center gap-2">
                 <i class="fa-solid fa-wand-magic-sparkles text-emerald-700"></i> 情境旅遊搜尋與氣象條件設定
             </h2>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div>
                     <label class="block text-xs font-bold text-amber-950 mb-1">目的地縣市</label>
                     <select id="citySelect" onchange="fetchWeatherAPI()" class="w-full bg-white border border-stone-300 rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-amber-800 outline-none">
@@ -114,7 +114,6 @@
                     <label class="block text-xs font-bold text-amber-950 mb-1">預計出遊日期 (小於今日反黑)</label>
                     <input type="date" id="travelDate" onchange="fetchWeatherAPI()" class="w-full bg-white border border-stone-300 rounded-xl p-2 text-sm focus:ring-2 focus:ring-amber-800 outline-none">
                 </div>
-                
             </div>
 
             <!-- 自由文字輸入框 -->
@@ -138,6 +137,10 @@
 
             <button onclick="generatePlan()" class="w-full bg-gradient-to-r from-amber-900 to-emerald-800 hover:from-amber-950 hover:to-emerald-900 text-white font-bold py-3.5 rounded-xl shadow-md transition flex items-center justify-center gap-2">
                 <i class="fa-solid fa-magnifying-glass"></i> 搜尋並匹配專屬景點
+            </button>
+            <!-- 放在原本 generatePlan() 按鈕下方 -->
+            <button onclick="discoverNewSpotsFromAnalytics()" id="aiDiscoverBtn" class="w-full mt-2.5 bg-stone-800 hover:bg-stone-900 text-amber-200 border border-amber-600/50 font-bold py-2.5 rounded-xl text-xs shadow transition flex items-center justify-center gap-2">
+                <i class="fa-solid fa-robot text-amber-400"></i> 依後台數據趨勢，自動從地圖 API 挖掘 3 個真實新景點
             </button>
         </div>
 
@@ -202,9 +205,7 @@
                 </div>
 
                 <!-- 行程過晚防呆提示條 -->
-                <div id="lateNightWarning" class="hidden bg-amber-500/20 border border-amber-400/50 text-amber-200 text-xs px-3 py-2 rounded-xl">
-                    ⚠️ 提醒：今日安排的景點較多，預計晚間 10 點後才結束，建議可減少 1 個景點會更悠閒喔！
-                </div>
+                <div id="lateNightWarning" class="hidden bg-amber-500/20 border border-amber-400/50 text-amber-200 text-xs px-3 py-2 rounded-xl"></div>
 
                 <div id="optimizedStepsContainer" class="space-y-2 text-sm"></div>
 
@@ -573,113 +574,282 @@
             document.getElementById('userInputQuery').value = text;
         }
 
+        // 放在 window.onload = function() { ... } 裡面的 fetchWeatherAPI(); 前面
+        Object.keys(mockDatabase).forEach(cityKey => {
+            const savedNewSpots = JSON.parse(localStorage.getItem(`ai_discovered_spots_${cityKey}`) || '[]');
+            if (savedNewSpots.length > 0) {
+               mockDatabase[cityKey] = [...mockDatabase[cityKey], ...savedNewSpots];
+            }
+        });
         async function fetchWeatherAPI() {
+            const city = document.getElementById('citySelect').value;
+            const dateVal = document.getElementById('travelDate').value;
+
+            const cityText = document.getElementById('weatherCityName');
+            const desc = document.getElementById('weatherDesc');
+            const temp = document.getElementById('weatherTemp');
+            const sub = document.getElementById('weatherSubInfo');
+            const tips = document.getElementById('weatherTips');
+
+            const coords = cityCoordinates[city] || cityCoordinates['台南'];
+
+            // 1. 檢查日期是否為過去日期
+            const todayObj = new Date();
+            todayObj.setHours(0, 0, 0, 0);
+            const targetObj = new Date(dateVal);
+            targetObj.setHours(0, 0, 0, 0);
+            const diffDays = Math.round((targetObj - todayObj) / (1000 * 60 * 60 * 24));
+
+            if (diffDays < 0) {
+                cityText.innerHTML = `<i class="fa-solid fa-calendar-xmark text-amber-300"></i> ${city}市 (${dateVal}) · 歷史日期`;
+                desc.innerText = '📅 無歷史預報';
+                temp.innerText = '--°C';
+                sub.innerText = '僅提供今日起未來 16 天預報';
+                tips.innerText = '您選擇的是過去的日期，系統將依照一般晴天模式為您排程。';
+                currentLiveWeatherData = { temp: 26, rainProb: 15, condition: 'sunny' };
+                return;
+            }
+
+            // 2. 先讀取 localStorage 快取（30 分鐘內同城市直接秒開）
+            const cacheKey = `weather_cache_${city}`;
+            const cachedRaw = localStorage.getItem(cacheKey);
+            let dailyData = null;
+
+            if (cachedRaw) {
+                const cached = JSON.parse(cachedRaw);
+                const isFresh = (Date.now() - cached.timestamp) < 30 * 60 * 1000;
+                if (isFresh && cached.daily) {
+                    dailyData = cached.daily;
+                }
+            }
+
+            // 3. 若無快取才發送網路請求，並設定 3 秒超時中斷（防止卡死）
+            if (!dailyData) {
+                cityText.innerHTML = `<i class="fa-solid fa-cloud-sun animate-pulse text-amber-300"></i> ${city}市 (${dateVal}) · 連線更新中...`;
+                
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+                try {
+                    const res = await fetch(
+                        `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&daily=temperature_2m_max,precipitation_probability_max&forecast_days=16&timezone=Asia%2FTaipei`,
+                        { signal: controller.signal }
+                    );
+                    clearTimeout(timeoutId);
+
+                    if (!res.ok) throw new Error('API 回應異常');
+                    const data = await res.json();
+                    dailyData = data.daily;
+
+                    localStorage.setItem(cacheKey, JSON.stringify({
+                        timestamp: Date.now(),
+                        daily: dailyData
+                    }));
+                } catch (err) {
+                    clearTimeout(timeoutId);
+                    cityText.innerHTML = `<i class="fa-solid fa-wifi text-amber-300"></i> ${city}市 (${dateVal}) · 快速離線模式`;
+                    desc.innerText = '📡 暫無即時氣象';
+                    temp.innerText = '--°C';
+                    sub.innerText = '連線逾時或離線中';
+                    tips.innerText = '氣象連線逾時，已直接為您載入行程功能，不影響排程操作！';
+                    currentLiveWeatherData = { temp: 26, rainProb: 15, condition: 'sunny' };
+                    return;
+                }
+            }
+
+            // 4. 渲染氣象畫面（快取與即時資料共用）
+            cityText.innerHTML = `<i class="fa-solid fa-cloud-sun text-amber-300"></i> ${city}市 (${dateVal}) · 線上 API 即時預報`;
+            const maxIndex = dailyData.temperature_2m_max.length - 1;
+            const dayIdx = Math.min(diffDays, maxIndex);
+            const isLongRange = diffDays > maxIndex;
+
+            const maxTemp = Math.round(dailyData.temperature_2m_max[dayIdx]);
+            const rainProb = dailyData.precipitation_probability_max[dayIdx] ?? 15;
+
+            temp.innerText = `${maxTemp}°C`;
+            sub.innerText = isLongRange ? `降雨率 ${rainProb}% | 遠期趨勢參考` : `降雨率 ${rainProb}% | 即時連線 API`;
+
+            if (rainProb >= 60) {
+                desc.innerText = '🌧️ 機率性降雨';
+                tips.innerText = isLongRange 
+                    ? '遠期趨勢偏雨：建議出發前一週再確認，或優先保留室內手作與咖啡廳備案！'
+                    : '線上氣象提示：該日降雨率較高，出門請備好雨具或搭配室內手作與咖啡廳！';
+                currentLiveWeatherData = { temp: maxTemp, rainProb: rainProb, condition: 'rainy' };
+            } else if (maxTemp >= 33) {
+                desc.innerText = '🔥 晴朗偏熱';
+                tips.innerText = '高溫提醒：白天氣溫較高，建議午後安排冷氣房咖啡廳或展館，傍晚再去海邊！';
+                currentLiveWeatherData = { temp: maxTemp, rainProb: rainProb, condition: 'hot' };
+            } else {
+                desc.innerText = '☀️ 舒適晴朗';
+                tips.innerText = isLongRange 
+                    ? '遠期氣候參考（暫以第16天預報估算）：建議出發前一週再確認精準預報！' 
+                    : '線上氣象正常：非常適合進行漫步逛街與咖啡廳下午茶！';
+                currentLiveWeatherData = { temp: maxTemp, rainProb: rainProb, condition: 'sunny' };
+            }
+        }
+        // 讀取後台數據 + 串接 OpenStreetMap Overpass API 動態抓取真實新地點
+        // 備援擴充景點庫（當免費地圖 API 尖峰塞車時，演算法依然能依後台數據趨勢自動解鎖新景點）
+const aiBackupSpotsPool = {
+    '台南': {
+        'urban': [
+            { id: 'ai_tn_u1', name: '桑原商店 (昭和風文青小店)', lat: 22.9878, lon: 120.2195, tags: ['coffee', 'shopping', 'urban', 'indoor'], desc: '復古日系雜貨店風格，適合拍照打卡與品嚐限定霜淇淋甜點。', duration: '1 小時', durationHours: 1.0, score: '🤖 AI 數據推薦' },
+            { id: 'ai_tn_u2', name: '林百貨 HAYASHI (文創選物)', lat: 22.9918, lon: 120.2025, tags: ['shopping', 'urban', 'indoor'], desc: '全台最古老指針式電梯古蹟百貨，匯集台南在地工藝與質感伴手禮。', duration: '1.5 小時', durationHours: 1.5, score: '🤖 AI 數據推薦' },
+            { id: 'ai_tn_u3', name: '藍晒圖文創園區 (手作與設計)', lat: 22.9866, lon: 120.1972, tags: ['diy', 'shopping', 'urban', 'outdoor'], desc: '3D 藍晒圖地標與多間獨立皮件、陶藝手作工坊聚落。', duration: '2 小時', durationHours: 2.0, score: '🤖 AI 數據推薦' }
+        ],
+        'nature': [
+            { id: 'ai_tn_n1', name: '四草綠色隧道 (台江生態遊船)', lat: 23.0245, lon: 120.1362, tags: ['nature', 'sea', 'outdoor'], desc: '台灣版亞馬遜河，搭乘竹筏穿梭紅樹林交織的翠綠水上隧道。', duration: '1.5 小時', durationHours: 1.5, score: '🤖 AI 數據推薦' },
+            { id: 'ai_tn_n2', name: '安平定情碼頭德陽艦園區', lat: 22.9922, lon: 120.1565, tags: ['sea', 'outdoor', 'family'], desc: '全台唯一軍艦博物館，登艦吹海風遠眺安平港海景。', duration: '1.5 小時', durationHours: 1.5, score: '🤖 AI 數據推薦' },
+            { id: 'ai_tn_n3', name: '巴克禮紀念公園 (落羽松森林)', lat: 22.9740, lon: 120.2215, tags: ['mountain', 'nature', 'outdoor'], desc: '市區裡的生態秘境公園，木棧道與落羽松湖畔散步極度療癒。', duration: '1.5 小時', durationHours: 1.5, score: '🤖 AI 數據推薦' }
+        ]
+    },
+    '台中': {
+        'urban': [
+            { id: 'ai_tc_u1', name: '綠光計畫范特喜文創聚落', lat: 24.1485, lon: 120.6625, tags: ['diy', 'shopping', 'urban'], desc: '十二棟老宅改建的文創聚落，充滿獨立手作店與質感咖啡。', duration: '1.5 小時', durationHours: 1.5, score: '🤖 AI 數據推薦' },
+            { id: 'ai_tc_u2', name: '宮原眼科 (古蹟冰品與伴手禮)', lat: 24.1378, lon: 120.6835, tags: ['coffee', 'shopping', 'urban', 'indoor'], desc: '日治時期眼科改建的哈利波特風圖書館建築，必吃特色冰淇淋。', duration: '1 小時', durationHours: 1.0, score: '🤖 AI 數據推薦' },
+            { id: 'ai_tc_u3', name: '國立台灣美術館 (藝文特區)', lat: 24.1408, lon: 120.6628, tags: ['urban', 'indoor', 'family'], desc: '免費入場的大型當代藝術展館，冷氣舒適且周邊咖啡廳林立。', duration: '2 小時', durationHours: 2.0, score: '🤖 AI 數據推薦' }
+        ],
+        'nature': [
+            { id: 'ai_tc_n1', name: '秋紅谷景觀生態公園', lat: 24.1675, lon: 120.6398, tags: ['nature', 'outdoor'], desc: '都市裡的下凹式綠洲湖泊，環湖步道散步與夜景皆宜。', duration: '1 小時', durationHours: 1.0, score: '🤖 AI 數據推薦' },
+            { id: 'ai_tc_n2', name: '望高寮夜景公園 (山景眺望)', lat: 24.1462, lon: 120.5785, tags: ['mountain', 'nature', 'outdoor'], desc: '大肚山制高點，擁有 270 度開闊視野俯瞰台中盆地與海岸線。', duration: '1.5 小時', durationHours: 1.5, score: '🤖 AI 數據推薦' },
+            { id: 'ai_tc_n3', name: '薰衣草森林 (新社山林秘境)', lat: 24.1845, lon: 120.8480, tags: ['mountain', 'nature', 'outdoor'], desc: '隱身新社山谷的療癒花園，漫步香草步道與森林咖啡屋。', duration: '2.5 小時', durationHours: 2.5, score: '🤖 AI 數據推薦' }
+        ]
+    },
+    '花蓮': {
+        'urban': [
+            { id: 'ai_hl_u1', name: '花蓮文創園區 (a-zone)', lat: 23.9775, lon: 121.6048, tags: ['diy', 'shopping', 'urban'], desc: '百年酒廠改建的藝文空間，週末常有手作市集與展覽。', duration: '1.5 小時', durationHours: 1.5, score: '🤖 AI 數據推薦' },
+            { id: 'ai_hl_u2', name: '松園別館 (歷史建築咖啡)', lat: 23.9875, lon: 121.6152, tags: ['coffee', 'urban', 'indoor'], desc: '日治時期軍事建築，老松樹環繞且可遠眺美崙溪出海口與太平洋。', duration: '1.5 小時', durationHours: 1.5, score: '🤖 AI 數據推薦' },
+            { id: 'ai_hl_u3', name: '東大門夜市 (在地小吃巡禮)', lat: 23.9735, lon: 121.6115, tags: ['shopping', 'urban', 'outdoor'], desc: '花蓮最大規模夜市，聚集原住民風味料理與各式特色小吃。', duration: '2 小時', durationHours: 2.0, score: '🤖 AI 數據推薦' }
+        ],
+        'nature': [
+            { id: 'ai_hl_n1', name: '四八高地 (俯瞰七星潭月牙灣)', lat: 24.0155, lon: 121.6310, tags: ['sea', 'nature', 'outdoor'], desc: '居高臨下俯瞰整個七星潭太平洋海灣的絕佳秘境視角。', duration: '1 小時', durationHours: 1.0, score: '🤖 AI 數據推薦' },
+            { id: 'ai_hl_n2', name: '雲山水夢幻湖 (落羽松秘境)', lat: 23.8615, lon: 121.5385, tags: ['nature', 'outdoor'], desc: '蒂芬妮藍夢幻湖水搭配跳石瀑布與落羽松林，如詩如畫。', duration: '1.5 小時', durationHours: 1.5, score: '🤖 AI 數據推薦' },
+            { id: 'ai_hl_n3', name: '慶修院 (日式寺院庭園漫步)', lat: 23.9722, lon: 121.5642, tags: ['nature', 'outdoor'], desc: '台灣保存最完整的日式寺院古蹟，庭園清幽適合靜心散步。', duration: '1 小時', durationHours: 1.0, score: '🤖 AI 數據推薦' }
+        ]
+    },
+    '台北': {
+        'urban': [
+            { id: 'ai_tp_u1', name: '松山文創園區 (松菸手作與設計)', lat: 25.0438, lon: 121.5605, tags: ['diy', 'shopping', 'urban', 'indoor'], desc: '誠品生活松菸店匯集金工、玻璃吹製、陶藝等頂級手作體驗工坊。', duration: '2.5 小時', durationHours: 2.5, score: '🤖 AI 數據推薦' },
+            { id: 'ai_tp_u2', name: '華山 1914 文化創意產業園區', lat: 25.0441, lon: 121.5294, tags: ['shopping', 'coffee', 'urban'], desc: '紅磚老倉庫改建的展覽與選物聖地，充滿設計小店與特色咖啡館。', duration: '2 小時', durationHours: 2.0, score: '🤖 AI 數據推薦' },
+            { id: 'ai_tp_u3', name: '大稻埕迪化街 (百年老屋咖啡與手作)', lat: 25.0565, lon: 121.5098, tags: ['coffee', 'diy', 'shopping', 'urban'], desc: '巴洛克式歷史街屋，隱藏許多復古茶館、手沖咖啡與布藝手作店。', duration: '2 小時', durationHours: 2.0, score: '🤖 AI 數據推薦' }
+        ],
+        'nature': [
+            { id: 'ai_tp_n1', name: '大安森林公園 (都市之肺散步)', lat: 25.0298, lon: 121.5355, tags: ['nature', 'outdoor'], desc: '台北市中心最大的森林生態公園，生態池賞鳥與綠蔭步道漫步。', duration: '1.5 小時', durationHours: 1.5, score: '🤖 AI 數據推薦' },
+            { id: 'ai_tp_n2', name: '大稻埕碼頭貨櫃市集 (淡水河夕陽)', lat: 25.0568, lon: 121.5075, tags: ['sea', 'nature', 'outdoor'], desc: '傍晚沿著淡水河畔騎單車或散步，欣賞金色夕陽與河岸微風。', duration: '1.5 小時', durationHours: 1.5, score: '🤖 AI 數據推薦' },
+            { id: 'ai_tp_n3', name: '貓空纜車與茶園步道 (山邊品茗)', lat: 24.9685, lon: 121.5882, tags: ['mountain', 'nature', 'outdoor'], desc: '搭乘水晶車廂俯瞰台北盆地，漫步樟樹步道並在山間茶坊品茶。', duration: '3 小時', durationHours: 3.0, score: '🤖 AI 數據推薦' }
+        ]
+    }
+};
+
+async function discoverNewSpotsFromAnalytics() {
     const city = document.getElementById('citySelect').value;
-    const dateVal = document.getElementById('travelDate').value;
-
-    const cityText = document.getElementById('weatherCityName');
-    const desc = document.getElementById('weatherDesc');
-    const temp = document.getElementById('weatherTemp');
-    const sub = document.getElementById('weatherSubInfo');
-    const tips = document.getElementById('weatherTips');
-
     const coords = cityCoordinates[city] || cityCoordinates['台南'];
+    const btn = document.getElementById('aiDiscoverBtn');
 
-    // 1. 檢查日期是否為過去日期
-    const todayObj = new Date();
-    todayObj.setHours(0, 0, 0, 0);
-    const targetObj = new Date(dateVal);
-    targetObj.setHours(0, 0, 0, 0);
-    const diffDays = Math.round((targetObj - todayObj) / (1000 * 60 * 60 * 24));
+    // 1. 讀取後台數據 (smartvibe_logs)，統計目前哪一派族群佔比最高
+    const logs = JSON.parse(localStorage.getItem('smartvibe_logs') || '[]');
+    let urbanCount = 0;
+    let natureCount = 0;
 
-    if (diffDays < 0) {
-        cityText.innerHTML = `<i class="fa-solid fa-calendar-xmark text-amber-300"></i> ${city}市 (${dateVal}) · 歷史日期`;
-        desc.innerText = '📅 無歷史預報';
-        temp.innerText = '--°C';
-        sub.innerText = '僅提供今日起未來 16 天預報';
-        tips.innerText = '您選擇的是過去的日期，系統將依照一般晴天模式為您排程。';
-        currentLiveWeatherData = { temp: 26, rainProb: 15, condition: 'sunny' };
-        return;
-    }
-
-    // 2. 先讀取 localStorage 快取（30 分鐘內同城市直接秒開）
-    const cacheKey = `weather_cache_${city}`;
-    const cachedRaw = localStorage.getItem(cacheKey);
-    let dailyData = null;
-
-    if (cachedRaw) {
-        const cached = JSON.parse(cachedRaw);
-        const isFresh = (Date.now() - cached.timestamp) < 30 * 60 * 1000; // 30分鐘內有效
-        if (isFresh && cached.daily) {
-            dailyData = cached.daily;
-        }
-    }
-
-    // 3. 若無快取才發送網路請求，並設定 3 秒超時中斷（防止卡死）
-    if (!dailyData) {
-        cityText.innerHTML = `<i class="fa-solid fa-cloud-sun animate-pulse text-amber-300"></i> ${city}市 (${dateVal}) · 連線更新中...`;
-        
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000); // 超過 3 秒直接放棄等待
-
-        try {
-            const res = await fetch(
-                `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&daily=temperature_2m_max,precipitation_probability_max&forecast_days=16&timezone=Asia%2FTaipei`,
-                { signal: controller.signal }
-            );
-            clearTimeout(timeoutId);
-
-            if (!res.ok) throw new Error('API 回應異常');
-            const data = await res.json();
-            dailyData = data.daily;
-
-            // 存入快取，下次開啟秒讀
-            localStorage.setItem(cacheKey, JSON.stringify({
-                timestamp: Date.now(),
-                daily: dailyData
-            }));
-        } catch (err) {
-            clearTimeout(timeoutId);
-            cityText.innerHTML = `<i class="fa-solid fa-wifi text-amber-300"></i> ${city}市 (${dateVal}) · 快速離線模式`;
-            desc.innerText = '📡 暫無即時氣象';
-            temp.innerText = '--°C';
-            sub.innerText = '連線逾時或離線中';
-            tips.innerText = '氣象連線逾時，已直接為您載入行程功能，不影響排程操作！';
-            currentLiveWeatherData = { temp: 26, rainProb: 15, condition: 'sunny' };
-            return;
-        }
-    }
-}
-    // 4. 渲染氣象畫面（快取與即時資料共用）
-    cityText.innerHTML = `<i class="fa-solid fa-cloud-sun text-amber-300"></i> ${city}市 (${dateVal}) · 線上 API 即時預報`;
-    const maxIndex = dailyData.temperature_2m_max.length - 1;
-    const dayIdx = Math.min(diffDays, maxIndex);
-    const isLongRange = diffDays > maxIndex;
-
-    const maxTemp = Math.round(dailyData.temperature_2m_max[dayIdx]);
-    const rainProb = dailyData.precipitation_probability_max[dayIdx] ?? 15;
-
-    temp.innerText = `${maxTemp}°C`;
-    sub.innerText = isLongRange ? `降雨率 ${rainProb}% | 遠期趨勢參考` : `降雨率 ${rainProb}% | 即時連線 API`;
-
-    if (rainProb >= 60) {
-        desc.innerText = '🌧️ 機率性降雨';
-        tips.innerText = isLongRange 
-            ? '遠期趨勢偏雨：建議出發前一週再確認，或優先保留室內手作與咖啡廳備案！'
-            : '線上氣象提示：該日降雨率較高，出門請備好雨具或搭配室內手作與咖啡廳！';
-        currentLiveWeatherData = { temp: maxTemp, rainProb: rainProb, condition: 'rainy' };
-    } else if (maxTemp >= 33) {
-        desc.innerText = '🔥 晴朗偏熱';
-        tips.innerText = '高溫提醒：白天氣溫較高，建議午後安排冷氣房咖啡廳或展館，傍晚再去海邊！';
-        currentLiveWeatherData = { temp: maxTemp, rainProb: rainProb, condition: 'hot' };
+    if (logs.length > 0) {
+        logs.forEach(l => {
+            if (l.style === 'urban') urbanCount++;
+            else natureCount++;
+        });
     } else {
-        desc.innerText = '☀️ 舒適晴朗';
-        tips.innerText = isLongRange 
-            ? '遠期氣候參考（暫以第16天預報估算）：建議出發前一週再確認精準預報！' 
-            : '線上氣象正常：非常適合進行漫步逛街與咖啡廳下午茶！';
-        currentLiveWeatherData = { temp: maxTemp, rainProb: rainProb, condition: 'sunny' };
+        if (currentUserPersona.style === 'urban') urbanCount = 1;
+        else natureCount = 1;
     }
 
+    const dominantStyle = urbanCount >= natureCount ? 'urban' : 'nature';
+    const styleLabel = dominantStyle === 'urban' ? '都市咖啡/手作派' : '大自然/戶外派';
+
+    btn.disabled = true;
+    btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin text-amber-300"></i> 分析後台(${styleLabel}佔優)，正在挖掘${city}新景點...`;
+
+    const existingNames = new Set((mockDatabase[city] || []).map(s => s.name));
+    let newFoundSpots = [];
+
+    // 2. 優先嘗試連線 OpenStreetMap 鏡像伺服器（設定 4 秒超時避免卡住）
+    const osmFilter = dominantStyle === 'urban'
+        ? `node["amenity"="cafe"]["name"](around:3500,${coords.lat},${coords.lon});`
+        : `node["leisure"="park"]["name"](around:3500,${coords.lat},${coords.lon});`;
+
+    const query = `[out:json][timeout:5];(${osmFilter});out body 12;`;
+    const mirrors = [
+        'https://overpass.kumi.systems/api/interpreter',
+        'https://overpass-api.de/api/interpreter'
+    ];
+
+    for (const mirrorUrl of mirrors) {
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 4000);
+            const res = await fetch(mirrorUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'data=' + encodeURIComponent(query),
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+
+            if (!res.ok) continue;
+            const data = await res.json();
+
+            for (const el of (data.elements || [])) {
+                const spotName = el.tags?.name;
+                if (!spotName || existingNames.has(spotName)) continue;
+                if (/星巴克|85度C|路易莎|麥當勞|肯德基|7-ELEVEN|全家/.test(spotName)) continue;
+
+                const fullName = `${spotName} (AI 地圖新挖掘)`;
+                if (existingNames.has(fullName)) continue;
+
+                existingNames.add(fullName);
+                newFoundSpots.push({
+                    id: `osm_${city}_${el.id}`,
+                    name: fullName,
+                    lat: el.lat,
+                    lon: el.lon,
+                    tags: dominantStyle === 'urban' ? ['coffee', 'indoor', 'urban'] : ['mountain', 'outdoor', 'nature'],
+                    desc: `依據後台「${styleLabel}」數據趨勢，從 OpenStreetMap 真實地圖資料庫自動挖掘之${city}在地推薦點。`,
+                    duration: dominantStyle === 'urban' ? '1.5 小時' : '1.5 - 2 小時',
+                    durationHours: 1.5,
+                    score: dominantStyle === 'urban' ? '🤖 AI 挖掘咖啡' : '🤖 AI 挖掘綠地'
+                });
+                if (newFoundSpots.length >= 3) break;
+            }
+            if (newFoundSpots.length > 0) break; // 成功抓到就跳出鏡像迴圈
+        } catch (e) {
+            // 靜默切換下一個鏡像或進入下方備援庫，不報紅字錯誤
+        }
+    }
+
+    // 3. 若線上地圖 API 尖峰塞車沒抓到，自動啟動「數據驅動備援景點庫」無縫補位
+    if (newFoundSpots.length === 0) {
+        const backupCandidates = (aiBackupSpotsPool[city] && aiBackupSpotsPool[city][dominantStyle]) || [];
+        for (const item of backupCandidates) {
+            if (!existingNames.has(item.name)) {
+                existingNames.add(item.name);
+                newFoundSpots.push({ ...item });
+            }
+        }
+    }
+
+    // 4. 寫入 localStorage 並更新畫面
+    if (newFoundSpots.length === 0) {
+        alert(`🎉 目前「${city}」的 ${styleLabel} 推薦景點已全數擴充完畢！\n你可以切換到其他縣市（台中/花蓮/台北）或改變後台問卷風格再挖掘喔！`);
+    } else {
+        const storageKey = `ai_discovered_spots_${city}`;
+        const prevSaved = JSON.parse(localStorage.getItem(storageKey) || '[]');
+        localStorage.setItem(storageKey, JSON.stringify([...prevSaved, ...newFoundSpots]));
+
+        mockDatabase[city] = [...mockDatabase[city], ...newFoundSpots];
+        alert(`🎉 AI 數據演算法執行成功！\n根據後台數據（${styleLabel}佔比最高），已為您自動新增 ${newFoundSpots.length} 個${city}新景點：\n\n• ${newFoundSpots.map(s => s.name).join('\n• ')}`);
+        generatePlan();
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = `<i class="fa-solid fa-robot text-amber-400"></i> 依後台數據趨勢，自動從地圖 API 挖掘 3 個真實新景點`;
+}
 
         function generatePlan() {
             const city = document.getElementById('citySelect').value;
@@ -890,6 +1060,9 @@
             } else {
                 lateWarning.classList.add('hidden');
             }
+
+            renderOptimizedRouteUI();
+        }
 
         function formatMinsToHHMM(mins) {
             const h = Math.floor(mins / 60) % 24;
